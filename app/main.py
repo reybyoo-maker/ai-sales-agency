@@ -41,29 +41,38 @@ def daily_sent(rows: list[dict]) -> int:
 def discover_and_append(ws, rows: list[dict]) -> int:
     existing = set()
 
+    # Identitas kuat untuk deduplication.
     for r in rows:
         for field in (
             "email",
             "website",
             "instagram",
             "phone",
-            "business_name",
         ):
             v = norm(str(r.get(field, "")))
-
             if v:
                 existing.add((field, v))
 
     try:
         found = discover(limit=DISCOVERY_PER_RUN)
 
+        print(f"Discovery returned: {len(found)} prospects")
+
     except Exception as exc:
-        print(f"DISCOVERY ERROR: {type(exc).__name__}: {exc}")
+        print(
+            f"DISCOVERY ERROR: "
+            f"{type(exc).__name__}: {exc}"
+        )
         return 0
 
     added = 0
+    skipped = 0
 
     for p in found:
+        business_name = str(
+            p.get("business_name", "")
+        ).strip()
+
         keys = []
 
         for field in (
@@ -71,26 +80,51 @@ def discover_and_append(ws, rows: list[dict]) -> int:
             "website",
             "instagram",
             "phone",
-            "business_name",
         ):
             v = norm(str(p.get(field, "")))
 
             if v:
                 keys.append((field, v))
 
-        if any(k in existing for k in keys):
+        duplicate_keys = [
+            k for k in keys
+            if k in existing
+        ]
+
+        if duplicate_keys:
+            skipped += 1
+
+            print(
+                f"SKIP DUPLICATE: "
+                f"{business_name} | "
+                f"{duplicate_keys}"
+            )
+
             continue
 
         try:
             append_prospect(ws, p)
+
             existing.update(keys)
+
             added += 1
+
+            print(
+                f"ADDED: {business_name}"
+            )
 
         except Exception as exc:
             print(
                 f"SHEET APPEND ERROR "
-                f"{p.get('business_name')}: {exc}"
+                f"{business_name}: {exc}"
             )
+
+    print(
+        f"Discovery summary: "
+        f"found={len(found)}, "
+        f"added={added}, "
+        f"duplicate={skipped}"
+    )
 
     return added
 
