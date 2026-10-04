@@ -11,12 +11,14 @@ from .sheets import get_sheet, rows_as_dicts, update_row
 
 
 def eligible(row: dict, test_mode: bool) -> bool:
-    """Return True when a prospect is ready for this run.
+    """Select rows for this run.
 
-    In TEST_MODE we allow prospects without email so we can test auditing and
-    message generation using the prospect data already in the Sheet.
-    In REAL mode, email is currently required because email is the only
-    automated cold-outreach channel implemented in V1.
+    In test mode, rows without email can still be audited and used to generate
+    a draft message. ERROR rows are retried in test mode so failed test runs
+    can recover after a code fix.
+
+    In real mode, email is currently required because email is the automated
+    cold-outreach channel implemented in V1.
     """
     if str(row.get("opt_out", "")).strip().lower() in {
         "yes", "true", "1", "stop"
@@ -24,17 +26,20 @@ def eligible(row: dict, test_mode: bool) -> bool:
         return False
 
     status = str(row.get("outreach_status", "")).strip().upper()
-    if status not in {"", "NEW", "AUDITED"}:
+
+    allowed = {"", "NEW", "AUDITED"}
+    if test_mode:
+        allowed.add("ERROR")
+
+    if status not in allowed:
         return False
 
     if test_mode:
-        # We only need enough data to audit/generate a test message.
         return any(
             str(row.get(field, "")).strip()
             for field in ("business_name", "website", "instagram", "phone")
         )
 
-    # Real V1 email outreach requires a valid email.
     return bool(str(row.get("email", "")).strip())
 
 
@@ -76,7 +81,6 @@ def main() -> None:
             print(f"Business: {row.get('business_name', '')}")
             print(f"Email: {row.get('email', '') or '(none)'}")
 
-            # 1) Audit prospect
             if not str(row.get("audit_score", "")).strip():
                 audit = audit_prospect(row)
                 row["audit_score"] = audit.get("score", "")
@@ -91,7 +95,6 @@ def main() -> None:
 
                 row["notes"] = str(audit.get("contact_angle", ""))
 
-            # 2) Generate personalized first-touch message
             generated = make_outreach(row)
             subject = str(generated.get("subject", "")).strip()
             body = build_message_body(
@@ -102,7 +105,6 @@ def main() -> None:
             row["message_subject"] = subject
             row["message_body"] = body
 
-            # 3) Test mode: never send anything
             if test_mode:
                 row["outreach_status"] = "TESTED"
                 row["outreach_at"] = datetime.now(timezone.utc).isoformat()
@@ -112,7 +114,6 @@ def main() -> None:
                 print(f"Subject: {subject}")
                 continue
 
-            # 4) Real mode: current V1 sends only when an email exists
             email = str(row.get("email", "")).strip()
             if not email:
                 row["outreach_status"] = "NO_EMAIL"
