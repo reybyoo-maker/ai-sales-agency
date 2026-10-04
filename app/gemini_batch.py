@@ -1,3 +1,4 @@
+````python
 from __future__ import annotations
 
 import json
@@ -11,22 +12,27 @@ from .config import MODEL, PORTFOLIO_URL
 
 _CLIENT: genai.Client | None = None
 
+
 SYSTEM = f"""
 Kamu adalah sales scout untuk agency landing page Indonesia.
 
 Tugasmu:
 1. Menilai apakah data prospect adalah bisnis individual.
 2. Menentukan kualitas prospect.
-3. Membuat email pembuka yang jujur, relevan, dan singkat.
+3. Membuat email pembuka yang jujur, relevan, natural, dan singkat.
 
-Aturan:
+Aturan penting:
 - Jangan mengaku sebagai pemilik bisnis.
 - Jangan berpura-pura prospect sudah tertarik.
 - Jangan membuat fakta yang tidak ada pada data.
 - Jangan menjanjikan hasil pasti.
 - Jangan menyebut AI.
+- Jangan menggunakan fake urgency.
+- Jangan menggunakan fake scarcity.
+- Jangan membuat testimonial palsu.
 - Portfolio: {PORTFOLIO_URL}
 """.strip()
+
 
 SCHEMA = {
     "type": "object",
@@ -45,7 +51,9 @@ SCHEMA = {
         },
         "observed_gaps": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {
+                "type": "string",
+            },
             "maxItems": 3,
         },
         "contact_angle": {
@@ -73,104 +81,190 @@ def client() -> genai.Client:
     global _CLIENT
 
     if _CLIENT is None:
-        key = os.getenv("GEMINI_API_KEY", "").strip()
+        key = os.getenv(
+            "GEMINI_API_KEY",
+            "",
+        ).strip()
 
         if not key:
-            raise RuntimeError("GEMINI_API_KEY belum diisi")
+            raise RuntimeError(
+                "GEMINI_API_KEY belum diisi"
+            )
 
-        _CLIENT = genai.Client(api_key=key)
+        _CLIENT = genai.Client(
+            api_key=key
+        )
 
     return _CLIENT
 
 
-def make_prompt(prospect: dict[str, Any]) -> str:
+def make_prompt(
+    prospect: dict[str, Any],
+) -> str:
     return f"""
 Analisis satu prospect berikut.
 
 DATA PROSPECT:
-{json.dumps(prospect, ensure_ascii=False)}
+{json.dumps(
+    prospect,
+    ensure_ascii=False,
+)}
 
-Aturan:
-- Jika ini direktori, artikel, portal, aggregator, marketplace, review page,
-  atau daftar bisnis:
-  fit = "not_a_business_lead"
-  dan score maksimal 20.
+ATURAN PENILAIAN:
 
-- Jika bisnis individual:
-  gunakan hanya bukti yang benar-benar ada pada DATA PROSPECT.
+1. Jika data merupakan:
+- direktori
+- aggregator
+- portal
+- marketplace
+- artikel
+- halaman review
+- listing umum
+- website lowongan kerja
+- halaman yang bukan bisnis individual
 
-- Semua business_lead dengan email valid tetap akan diproses.
+maka:
+fit = "not_a_business_lead"
+score maksimal = 20.
 
-- Buat email awal maksimal sekitar 900 karakter.
+2. Jika merupakan bisnis individual:
+gunakan hanya informasi yang benar-benar terdapat pada DATA PROSPECT.
 
-- Tujuan email:
-  memperkenalkan jasa landing page dan memberi pilihan untuk lanjut lewat WhatsApp.
+3. Jangan mengarang:
+- nama pemilik
+- nama contact person
+- alamat
+- followers
+- promo
+- layanan yang tidak tercantum
+- omzet
+- statistik
+- testimonial
+- jumlah pelanggan
+- pencapaian bisnis.
 
-- Jangan mengatakan prospect sudah tertarik.
+4. Buat email pembuka yang:
+- natural
+- profesional tetapi tidak kaku
+- singkat
+- relevan dengan niche bisnis
+- tidak terdengar seperti spam massal
+- tidak terlalu memuji
+- tidak mengklaim hasil pasti.
 
-- Jangan mengarang:
-  nama pemilik,
-  promo,
-  followers,
-  layanan,
-  alamat,
-  statistik,
-  omzet,
-  atau informasi lainnya.
+5. Tujuan email:
+memperkenalkan jasa landing page dan membuka kesempatan untuk berdiskusi.
 
-- Jangan menyebut AI.
+6. Jangan mengatakan:
+- "saya tertarik dengan layanan Anda"
+  jika sebenarnya tidak ada bukti ketertarikan pribadi.
+- "website Anda buruk"
+- "website Anda jelek"
+- "pasti meningkatkan penjualan"
+- "dijamin mendapatkan lebih banyak pelanggan"
 
-- Jangan memakai:
-  klaim "pasti",
-  fake urgency,
-  fake scarcity,
-  testimonial palsu.
+7. Jelaskan peluang secara sopan berdasarkan data.
 
-- Sertakan portfolio hanya SATU kali di body.
+8. Buat email maksimal sekitar 900 karakter.
 
-- Jangan menulis nomor WhatsApp.
-  Aplikasi akan menambahkan link WhatsApp yang benar.
+9. Sertakan PORTFOLIO hanya SATU kali di dalam body.
 
-- Sertakan kalimat berikut persis:
-  "Kalau tidak relevan, cukup balas STOP dan saya tidak akan menghubungi lagi."
+Portfolio:
+{PORTFOLIO_URL}
+
+10. Jangan membuat bagian:
+"Lanjut via WhatsApp"
+
+Aplikasi akan menambahkan link WhatsApp secara otomatis setelah response Gemini selesai.
+
+11. Jangan menulis nomor WhatsApp.
+
+12. Sertakan kalimat berikut persis di akhir isi utama email:
+
+"Kalau tidak relevan, cukup balas STOP dan saya tidak akan menghubungi lagi."
+
+13. Jangan menyebut AI.
+
+OUTPUT:
+- score
+- fit
+- observed_gaps
+- contact_angle
+- subject
+- body
 """.strip()
 
 
-def _parse_response(response: Any) -> dict[str, Any]:
-    # SDK kadang sudah menyediakan hasil parsed.
-    parsed = getattr(response, "parsed", None)
+def _parse_response(
+    response: Any,
+) -> dict[str, Any]:
 
-    if isinstance(parsed, dict):
+    parsed = getattr(
+        response,
+        "parsed",
+        None,
+    )
+
+    if isinstance(
+        parsed,
+        dict,
+    ):
         return parsed
 
-    text = getattr(response, "text", "") or ""
-    text = text.strip()
+    text = (
+        getattr(
+            response,
+            "text",
+            "",
+        )
+        or ""
+    ).strip()
 
     if not text:
-        raise RuntimeError("Gemini mengembalikan response kosong")
+        raise RuntimeError(
+            "Gemini mengembalikan response kosong"
+        )
 
-    # Fallback jika model mengembalikan JSON dalam code fence.
+    # Bersihkan markdown code fence jika ada.
     if text.startswith("```"):
-        text = text.replace("```json", "", 1)
-        text = text.replace("```", "")
+        text = text.replace(
+            "```json",
+            "",
+            1,
+        )
+        text = text.replace(
+            "```",
+            "",
+        )
         text = text.strip()
 
     try:
         data = json.loads(text)
+
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            f"Response Gemini bukan JSON valid: {text[:500]}"
+            "Response Gemini bukan JSON valid: "
+            f"{text[:500]}"
         ) from exc
 
-    if not isinstance(data, dict):
-        raise RuntimeError("Response Gemini bukan object JSON")
+    if not isinstance(
+        data,
+        dict,
+    ):
+        raise RuntimeError(
+            "Response Gemini bukan object JSON"
+        )
 
     return data
 
 
-def generate_prospect(prospect: dict[str, Any]) -> dict[str, Any]:
+def generate_prospect(
+    prospect: dict[str, Any],
+) -> dict[str, Any]:
     """
-    Analisis 1 prospect menggunakan generate_content().
+    Menganalisis satu prospect menggunakan
+    Gemini generate_content().
+
     Tidak menggunakan Gemini Batch API.
     """
 
@@ -185,4 +279,7 @@ def generate_prospect(prospect: dict[str, Any]) -> dict[str, Any]:
         ),
     )
 
-    return _parse_response(response)
+    return _parse_response(
+        response
+    )
+````
