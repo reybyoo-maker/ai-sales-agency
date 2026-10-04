@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import os
 from typing import Any, Dict
@@ -19,12 +20,48 @@ Primary goal: earn permission to continue the conversation on WhatsApp.
 Write natural Indonesian, concise, respectful, and personalized to the prospect's business.
 """
 
+# IMPORTANT:
+# Keep ONE Gemini client alive for the whole GitHub Actions process.
+# Creating a temporary client inside each function can cause the SDK/httpx
+# client to be garbage-collected and closed before the request finishes.
+_GEMINI_CLIENT: genai.Client | None = None
 
-def client() -> genai.Client:
-    key = os.environ.get('GEMINI_API_KEY')
-    if not key:
-        raise RuntimeError('GEMINI_API_KEY is missing')
-    return genai.Client(api_key=key)
+
+def get_client() -> genai.Client:
+    global _GEMINI_CLIENT
+
+    if _GEMINI_CLIENT is None:
+        key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not key:
+            raise RuntimeError("GEMINI_API_KEY is missing")
+        _GEMINI_CLIENT = genai.Client(api_key=key)
+
+    return _GEMINI_CLIENT
+
+
+def _generate_json(prompt: str) -> Dict[str, Any]:
+    response = get_client().models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            response_mime_type="application/json",
+        ),
+    )
+
+    text = (response.text or "").strip()
+    if not text:
+        raise RuntimeError("Gemini returned an empty response")
+
+    try:
+        result = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Gemini returned invalid JSON: {text[:300]}") from exc
+
+    if not isinstance(result, dict):
+        raise RuntimeError("Gemini JSON response is not an object")
+
+    return result
 
 
 def make_outreach(prospect: Dict[str, Any]) -> Dict[str, Any]:
@@ -43,15 +80,7 @@ Rules:
 - Do not say 'saya lihat website...' unless a website is present in the data.
 - Do not promise guaranteed sales.
 """
-    response = client().models.generate_content(
-        model=MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type='application/json',
-        ),
-    )
-    return json.loads(response.text)
+    return _generate_json(prompt)
 
 
 def audit_prospect(prospect: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,12 +93,4 @@ Data:
 
 Be conservative. Score based only on evidence in the data.
 """
-    response = client().models.generate_content(
-        model=MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type='application/json',
-        ),
-    )
-    return json.loads(response.text)
+    return _generate_json(prompt)
