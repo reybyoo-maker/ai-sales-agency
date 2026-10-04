@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from .config import DAILY_OUTREACH_LIMIT, BATCH_SIZE
 from .gemini_agent import analyze_prospect
-from .outreach import build_message_body, send_email
+from .outreach import build_message_body, send_email, wa_link
 from .sheets import get_sheet, rows_as_dicts, update_row
 
 
@@ -69,6 +69,12 @@ def main() -> None:
             row["message_subject"] = str(result.get("subject", "")).strip()
             row["message_body"] = str(result.get("body", "")).strip()
 
+            # Always prepare the WhatsApp handoff link, including TEST_MODE.
+            row["wa_link"] = wa_link(
+                f"Halo Rey, saya dari {row.get('business_name') or 'bisnis ini'}. Saya tertarik dengan landing page dan ingin lihat detailnya."
+            )
+            row["message_body"] = build_message_body(result, row.get("business_name") or "bisnis ini")
+
             # Directory/article/review results are stored as audited but not contacted.
             if str(result.get("fit", "")).lower() == "not_a_business_lead":
                 row["outreach_status"] = "SKIPPED"
@@ -92,10 +98,8 @@ def main() -> None:
                 print("NO_EMAIL: saved for another channel")
                 continue
 
-            body = build_message_body(result, row.get("business_name") or "bisnis ini")
+            body = row["message_body"]
             send_email(email, row["message_subject"], body)
-
-            row["message_body"] = body
             row["outreach_status"] = "CONTACTED"
             row["outreach_at"] = datetime.now(timezone.utc).isoformat()
             update_row(ws, row_number, row)
