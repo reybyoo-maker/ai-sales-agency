@@ -49,5 +49,6 @@ jobs:
           DAILY_OUTREACH_LIMIT: ${{ vars.DAILY_OUTREACH_LIMIT }}
           BATCH_SIZE: ${{ vars.BATCH_SIZE }}
           MIN_MINUTES_BETWEEN_SENDS: ${{ vars.MIN_MINUTES_BETWEEN_SENDS }}
+          TEST_MODE: ${{ vars.TEST_MODE }}
           TIMEZONE: "Asia/Jakarta"
         run: python -m app.main
