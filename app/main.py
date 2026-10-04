@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 
 import time
@@ -16,17 +15,8 @@ from .config import (
 )
 from .discovery import discover
 from .gemini_batch import generate_prospect
-from .outreach import (
-    build_message,
-    send_email,
-    wa_link,
-)
-from .sheets import (
-    append_prospect,
-    get_ws,
-    records,
-    update,
-)
+from .outreach import build_message, wa_link
+from .sheets import append_prospect, get_ws, records, update
 
 
 def now_iso() -> str:
@@ -44,9 +34,7 @@ def norm(v: str) -> str:
     )
 
 
-def daily_sent(
-    rows: list[dict],
-) -> int:
+def daily_sent(rows: list[dict]) -> int:
     today = (
         datetime.now(
             ZoneInfo(TIMEZONE)
@@ -82,9 +70,7 @@ def discover_and_append(
 
     existing = set()
 
-    # Deduplicate berdasarkan identitas yang kuat.
     for r in rows:
-
         for field in (
             "email",
             "website",
@@ -169,7 +155,6 @@ def discover_and_append(
         ]
 
         if duplicate_keys:
-
             skipped += 1
 
             print(
@@ -212,17 +197,13 @@ def discover_and_append(
     return added
 
 
-def submit_batch(
+def process_ai(
     ws,
     rows: list[dict],
     sent: int,
 ) -> int:
     """
-    Proses prospect melalui Gemini secara langsung.
-
-    Nama fungsi tetap submit_batch agar struktur
-    project lama tetap kompatibel.
-
+    Memproses prospect dengan Gemini.
     Tidak menggunakan Gemini Batch API.
     """
 
@@ -233,7 +214,7 @@ def submit_batch(
 
     if available <= 0:
         print(
-            "Daily outreach limit reached."
+            "Daily limit reached."
         )
         return 0
 
@@ -289,9 +270,7 @@ def submit_batch(
         if "@" not in email:
             continue
 
-        if "." not in (
-            email.split("@")[-1]
-        ):
+        if "." not in email.split("@")[-1]:
             continue
 
         candidates.append(
@@ -342,13 +321,10 @@ def submit_batch(
 
         try:
 
-            # Tandai sedang diproses.
             update(
                 ws,
                 row_number,
-                outreach_status=(
-                    "AI_PROCESSING"
-                ),
+                outreach_status="AI_PROCESSING",
                 notes=(
                     "ai_started_at="
                     f"{now_iso()}"
@@ -375,7 +351,6 @@ def submit_batch(
                 )[:3]
             )
 
-            # Body hasil Gemini.
             body = build_message(
                 str(
                     result.get(
@@ -386,13 +361,10 @@ def submit_batch(
                 business_name,
             ).strip()
 
-            # Link WA dibuat oleh aplikasi,
-            # bukan oleh Gemini.
             link = wa_link(
                 business_name
             ).strip()
 
-            # Tambahkan WhatsApp sekali saja.
             if (
                 "Lanjut via WhatsApp:"
                 not in body
@@ -453,8 +425,7 @@ def submit_batch(
 
             print(
                 f"OK row {row_number}: "
-                f"{business_name} "
-                f"-> {status}"
+                f"{business_name} -> {status}"
             )
 
         except Exception as exc:
@@ -471,14 +442,13 @@ def submit_batch(
             )
 
             print(
-                f"AI ERROR row {row_number}: "
+                f"AI ERROR row "
+                f"{row_number}: "
                 f"{error_message}"
             )
 
-        # Jeda antarpemrosesan AI.
         if (
-            i
-            < len(candidates)
+            i < len(candidates)
             and SEND_DELAY_SECONDS > 0
         ):
             time.sleep(
@@ -499,192 +469,9 @@ def submit_batch(
     return processed
 
 
-def send_ready(
-    ws,
-    rows: list[dict],
-    sent_today: int,
-) -> int:
-
-    if TEST_MODE:
-
-        print(
-            "TEST_MODE=True -> "
-            "email sending disabled."
-        )
-
-        return 0
-
-    remaining = max(
-        0,
-        DAILY_OUTREACH_LIMIT
-        - sent_today,
-    )
-
-    if remaining <= 0:
-        print(
-            "Daily email limit reached."
-        )
-        return 0
-
-    quota = min(
-        EMAILS_PER_RUN,
-        remaining,
-    )
-
-    candidates = []
-
-    for idx, row in enumerate(
-        rows,
-        start=2,
-    ):
-
-        if norm(
-            str(
-                row.get(
-                    "outreach_status",
-                    "",
-                )
-            )
-        ) != "ready":
-            continue
-
-        if norm(
-            str(
-                row.get(
-                    "opt_out",
-                    "",
-                )
-            )
-        ) in {
-            "yes",
-            "true",
-            "1",
-            "stop",
-        }:
-            continue
-
-        email = (
-            str(
-                row.get(
-                    "email",
-                    "",
-                )
-            )
-            .strip()
-            .lower()
-        )
-
-        if "@" not in email:
-            continue
-
-        candidates.append(
-            (
-                idx,
-                row,
-            )
-        )
-
-        if len(candidates) >= quota:
-            break
-
-    if not candidates:
-        print(
-            "No READY email queue."
-        )
-        return 0
-
-    sent = 0
-
-    for i, (
-        row_number,
-        row,
-    ) in enumerate(
-        candidates,
-        start=1,
-    ):
-
-        try:
-
-            send_email(
-                str(
-                    row.get(
-                        "email",
-                        "",
-                    )
-                ).strip(),
-                str(
-                    row.get(
-                        "message_subject",
-                        "Landing page untuk bisnis Anda",
-                    )
-                ),
-                str(
-                    row.get(
-                        "message_body",
-                        "",
-                    )
-                ),
-            )
-
-            update(
-                ws,
-                row_number,
-                outreach_status=(
-                    "CONTACTED"
-                ),
-                outreach_at=now_iso(),
-            )
-
-            sent += 1
-
-            print(
-                f"SENT {i}/{len(candidates)} "
-                f"row {row_number}: "
-                f"{row.get('business_name')} "
-                f"-> {row.get('email')}"
-            )
-
-            # Jeda pengiriman.
-            if (
-                i
-                < len(candidates)
-            ):
-                time.sleep(
-                    max(
-                        15,
-                        SEND_DELAY_SECONDS,
-                    )
-                )
-
-        except Exception as exc:
-
-            error_message = (
-                f"{type(exc).__name__}: {exc}"
-            )[:1200]
-
-            update(
-                ws,
-                row_number,
-                outreach_status="ERROR",
-                notes=error_message,
-            )
-
-            print(
-                f"SEND ERROR row "
-                f"{row_number}: "
-                f"{error_message}"
-            )
-
-    return sent
-
-
 def main() -> None:
 
     ws = get_ws()
-
-    # =========================
-    # 1. DISCOVERY
-    # =========================
 
     rows = records(ws)
 
@@ -693,12 +480,7 @@ def main() -> None:
         rows,
     )
 
-    # Refresh data setelah discovery.
     rows = records(ws)
-
-    # =========================
-    # 2. STATUS
-    # =========================
 
     sent = daily_sent(rows)
 
@@ -719,13 +501,9 @@ def main() -> None:
         f"{sent}/{DAILY_OUTREACH_LIMIT}"
     )
 
-    # =========================
-    # 3. GEMINI
-    # =========================
-
     rows = records(ws)
 
-    processed = submit_batch(
+    processed = process_ai(
         ws,
         rows,
         sent,
@@ -736,24 +514,11 @@ def main() -> None:
         f"{processed}"
     )
 
-    # =========================
-    # 4. EMAIL OUTREACH
-    # =========================
-
-    rows = records(ws)
-
-    sent_now = send_ready(
-        ws,
-        rows,
-        daily_sent(rows),
-    )
-
     print(
-        f"Emails sent this run: "
-        f"{sent_now}"
+        "Email sending is kept separate "
+        "from prospect discovery and AI processing."
     )
 
 
 if __name__ == "__main__":
     main()
-```
