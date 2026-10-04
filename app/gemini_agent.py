@@ -70,6 +70,9 @@ def _generate_json(prompt: str) -> Dict[str, Any]:
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     response_mime_type="application/json",
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                        disable=True
+                    ),
                 ),
             )
             text = (response.text or "").strip()
