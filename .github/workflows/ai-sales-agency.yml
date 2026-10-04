@@ -1,18 +1,20 @@
 name: AI Sales Agency
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "7,37 * * * *"
+    - cron: "0 * * * *"
+      timezone: "Asia/Jakarta"
+
+  workflow_dispatch:
 
 concurrency:
-  group: ai-sales-agency
+  group: ai-sales-production
   cancel-in-progress: false
 
 jobs:
-  run:
+  run-ai-agent:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -24,24 +26,15 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run AI Sales Agency
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          WA_NUMBER: ${{ secrets.WA_NUMBER }}
-          PORTFOLIO_URL: ${{ vars.PORTFOLIO_URL }}
-          DAILY_OUTREACH_LIMIT: ${{ vars.DAILY_OUTREACH_LIMIT }}
-          DISCOVERY_PER_RUN: ${{ vars.DISCOVERY_PER_RUN }}
-          BATCH_MAX_PROSPECTS: ${{ vars.BATCH_MAX_PROSPECTS }}
-          EMAILS_PER_RUN: ${{ vars.EMAILS_PER_RUN }}
-          SEND_DELAY_SECONDS: ${{ vars.SEND_DELAY_SECONDS }}
-          SHEET_TAB: ${{ vars.SHEET_TAB }}
-          TEST_MODE: ${{ vars.TEST_MODE }}
-          TIMEZONE: Asia/Jakarta
-        run: python -m app.main
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+
+        run: |
+          python -m app.main
