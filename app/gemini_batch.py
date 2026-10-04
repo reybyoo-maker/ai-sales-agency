@@ -30,7 +30,6 @@ SCHEMA = {
         "body": {"type": "string"},
     },
     "required": ["score", "fit", "observed_gaps", "contact_angle", "subject", "body"],
-    "additionalProperties": False,
 }
 
 
