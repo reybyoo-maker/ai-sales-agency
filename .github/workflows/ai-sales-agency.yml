@@ -26,16 +26,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Discover new prospects
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
-          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          PORTFOLIO_URL: ${{ vars.PORTFOLIO_URL }}
-          WA_NUMBER: ${{ secrets.WA_NUMBER }}
-        run: python -m app.discover_once
-
       - name: Run AI Sales Agency
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -47,8 +37,11 @@ jobs:
           WA_NUMBER: ${{ secrets.WA_NUMBER }}
           PORTFOLIO_URL: ${{ vars.PORTFOLIO_URL }}
           DAILY_OUTREACH_LIMIT: ${{ vars.DAILY_OUTREACH_LIMIT }}
-          BATCH_SIZE: ${{ vars.BATCH_SIZE }}
-          MIN_MINUTES_BETWEEN_SENDS: ${{ vars.MIN_MINUTES_BETWEEN_SENDS }}
+          DISCOVERY_PER_RUN: ${{ vars.DISCOVERY_PER_RUN }}
+          BATCH_MAX_PROSPECTS: ${{ vars.BATCH_MAX_PROSPECTS }}
+          EMAILS_PER_RUN: ${{ vars.EMAILS_PER_RUN }}
+          SEND_DELAY_SECONDS: ${{ vars.SEND_DELAY_SECONDS }}
+          SHEET_TAB: ${{ vars.SHEET_TAB }}
           TEST_MODE: ${{ vars.TEST_MODE }}
-          TIMEZONE: "Asia/Jakarta"
+          TIMEZONE: Asia/Jakarta
         run: python -m app.main
