@@ -1,38 +1,45 @@
 from __future__ import annotations
+
 import os
 import smtplib
+import ssl
 from email.message import EmailMessage
-from datetime import datetime
 from urllib.parse import quote
 
-from .config import WA_NUMBER, PORTFOLIO_URL
+from .config import PORTFOLIO_URL
 
 
-def wa_link(prefill: str) -> str:
-    if not WA_NUMBER:
-        raise RuntimeError('WA_NUMBER is missing')
-    number = ''.join(ch for ch in WA_NUMBER if ch.isdigit())
-    if number.startswith('0'):
-        number = '62' + number[1:]
-    return f'https://wa.me/{number}?text={quote(prefill)}'
+def wa_link(business_name: str) -> str:
+    number = os.getenv("WA_NUMBER", "").strip().replace("+", "").replace(" ", "").replace("-", "")
+    if not number:
+        return ""
+    text = f"Halo Rey, saya dari {business_name}. Saya ingin melihat detail jasa landing page."
+    return f"https://wa.me/{number}?text={quote(text)}"
 
 
-def build_message_body(generated: dict, business_name: str) -> str:
-    body = generated['body'].strip()
-    link = wa_link(f'Halo Rey, saya dari {business_name}. Saya tertarik dengan landing page dan ingin lihat detailnya.')
-    return f"{body}\n\nPortofolio: {PORTFOLIO_URL}\nLanjut via WhatsApp: {link}"
+def build_message(body: str, business_name: str) -> str:
+    link = wa_link(business_name)
+    return (
+        body.strip()
+        + "\n\nPortofolio:\n"
+        + PORTFOLIO_URL
+        + "\n\nLanjut via WhatsApp:\n"
+        + link
+    )
 
 
-def send_email(to: str, subject: str, body: str):
-    user = os.environ.get('GMAIL_ADDRESS')
-    password = os.environ.get('GMAIL_APP_PASSWORD')
+def send_email(to_email: str, subject: str, body: str) -> None:
+    user = os.getenv("GMAIL_ADDRESS", "").strip()
+    password = os.getenv("GMAIL_APP_PASSWORD", "").replace(" ", "").strip()
     if not user or not password:
-        raise RuntimeError('GMAIL_ADDRESS/GMAIL_APP_PASSWORD is missing')
+        raise RuntimeError("GMAIL_ADDRESS / GMAIL_APP_PASSWORD belum diisi")
     msg = EmailMessage()
-    msg['From'] = user
-    msg['To'] = to
-    msg['Subject'] = subject
+    msg["From"] = user
+    msg["To"] = to_email
+    msg["Subject"] = (subject or "Ide landing page untuk bisnis Anda")[:120]
     msg.set_content(body)
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-        smtp.login(user, password)
-        smtp.send_message(msg)
+    context = ssl.create_default_context()
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+        server.starttls(context=context)
+        server.login(user, password)
+        server.send_message(msg)
