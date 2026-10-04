@@ -3,7 +3,11 @@ name: AI Sales Agency
 on:
   workflow_dispatch:
   schedule:
-    - cron: '7,37 * * * *'
+    - cron: "7,37 * * * *"
+
+concurrency:
+  group: ai-sales-agency
+  cancel-in-progress: false
 
 jobs:
   run:
@@ -17,7 +21,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -25,9 +29,12 @@ jobs:
       - name: Discover new prospects
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-        run: python -m app.discover_once || true
+          PORTFOLIO_URL: ${{ vars.PORTFOLIO_URL }}
+          WA_NUMBER: ${{ secrets.WA_NUMBER }}
+        run: python -m app.discover_once
 
       - name: Run AI Sales Agency
         env:
@@ -42,5 +49,5 @@ jobs:
           DAILY_OUTREACH_LIMIT: ${{ vars.DAILY_OUTREACH_LIMIT }}
           BATCH_SIZE: ${{ vars.BATCH_SIZE }}
           MIN_MINUTES_BETWEEN_SENDS: ${{ vars.MIN_MINUTES_BETWEEN_SENDS }}
-          TIMEZONE: Asia/Jakarta
+          TIMEZONE: "Asia/Jakarta"
         run: python -m app.main
