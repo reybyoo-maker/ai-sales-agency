@@ -1,0 +1,4 @@
+google-genai>=1.0.0
+gspread>=6.1.0
+google-auth>=2.29.0
+ddgs>=9.0.0
