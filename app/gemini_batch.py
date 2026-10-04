@@ -1,4 +1,3 @@
-````python
 from __future__ import annotations
 
 import json
@@ -30,7 +29,9 @@ Aturan penting:
 - Jangan menggunakan fake urgency.
 - Jangan menggunakan fake scarcity.
 - Jangan membuat testimonial palsu.
-- Portfolio: {PORTFOLIO_URL}
+
+Portfolio:
+{PORTFOLIO_URL}
 """.strip()
 
 
@@ -81,6 +82,7 @@ def client() -> genai.Client:
     global _CLIENT
 
     if _CLIENT is None:
+
         key = os.getenv(
             "GEMINI_API_KEY",
             "",
@@ -101,6 +103,7 @@ def client() -> genai.Client:
 def make_prompt(
     prospect: dict[str, Any],
 ) -> str:
+
     return f"""
 Analisis satu prospect berikut.
 
@@ -124,11 +127,14 @@ ATURAN PENILAIAN:
 - halaman yang bukan bisnis individual
 
 maka:
+
 fit = "not_a_business_lead"
-score maksimal = 20.
+
+dan score maksimal 20.
 
 2. Jika merupakan bisnis individual:
-gunakan hanya informasi yang benar-benar terdapat pada DATA PROSPECT.
+gunakan hanya informasi yang benar-benar
+terdapat pada DATA PROSPECT.
 
 3. Jangan mengarang:
 - nama pemilik
@@ -145,45 +151,49 @@ gunakan hanya informasi yang benar-benar terdapat pada DATA PROSPECT.
 
 4. Buat email pembuka yang:
 - natural
-- profesional tetapi tidak kaku
+- profesional
 - singkat
-- relevan dengan niche bisnis
-- tidak terdengar seperti spam massal
+- relevan dengan niche
 - tidak terlalu memuji
+- tidak terdengar seperti spam massal
 - tidak mengklaim hasil pasti.
 
 5. Tujuan email:
-memperkenalkan jasa landing page dan membuka kesempatan untuk berdiskusi.
+memperkenalkan jasa landing page
+dan membuka kesempatan berdiskusi.
 
-6. Jangan mengatakan:
-- "saya tertarik dengan layanan Anda"
-  jika sebenarnya tidak ada bukti ketertarikan pribadi.
-- "website Anda buruk"
-- "website Anda jelek"
-- "pasti meningkatkan penjualan"
-- "dijamin mendapatkan lebih banyak pelanggan"
+6. Jangan menggunakan kalimat:
+"saya tertarik dengan layanan Anda"
+kecuali memang didukung oleh data.
 
-7. Jelaskan peluang secara sopan berdasarkan data.
+7. Jangan mengatakan:
+- website Anda buruk
+- website Anda jelek
+- pasti meningkatkan penjualan
+- dijamin mendapatkan lebih banyak pelanggan
 
-8. Buat email maksimal sekitar 900 karakter.
+8. Gunakan bukti yang ada pada prospect.
 
-9. Sertakan PORTFOLIO hanya SATU kali di dalam body.
+9. Buat email maksimal sekitar 900 karakter.
+
+10. Sertakan portfolio SATU kali saja.
 
 Portfolio:
 {PORTFOLIO_URL}
 
-10. Jangan membuat bagian:
+11. Jangan membuat bagian:
 "Lanjut via WhatsApp"
 
-Aplikasi akan menambahkan link WhatsApp secara otomatis setelah response Gemini selesai.
+Aplikasi akan menambahkan link WhatsApp
+secara otomatis.
 
-11. Jangan menulis nomor WhatsApp.
+12. Jangan menulis nomor WhatsApp.
 
-12. Sertakan kalimat berikut persis di akhir isi utama email:
+13. Sertakan kalimat berikut:
 
 "Kalau tidak relevan, cukup balas STOP dan saya tidak akan menghubungi lagi."
 
-13. Jangan menyebut AI.
+14. Jangan menyebut AI.
 
 OUTPUT:
 - score
@@ -225,18 +235,17 @@ def _parse_response(
             "Gemini mengembalikan response kosong"
         )
 
-    # Bersihkan markdown code fence jika ada.
     if text.startswith("```"):
         text = text.replace(
             "```json",
             "",
             1,
         )
+
         text = text.replace(
             "```",
             "",
-        )
-        text = text.strip()
+        ).strip()
 
     try:
         data = json.loads(text)
@@ -262,7 +271,7 @@ def generate_prospect(
     prospect: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Menganalisis satu prospect menggunakan
+    Analisis satu prospect menggunakan
     Gemini generate_content().
 
     Tidak menggunakan Gemini Batch API.
@@ -282,4 +291,3 @@ def generate_prospect(
     return _parse_response(
         response
     )
-````
