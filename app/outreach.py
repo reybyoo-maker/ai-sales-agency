@@ -181,4 +181,3 @@ def send_email(
         server.send_message(
             msg
         )
-```
