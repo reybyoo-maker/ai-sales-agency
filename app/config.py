@@ -78,7 +78,7 @@ OPEN_BLOCK_TERMS = (
 )
 
 CSV_FIELDS = [
-    "job_id", "job_title", "company", "category", "work_mode",
+    "job_id", "job_title", "company", "company_tier", "category", "work_mode",
     "location", "source_url", "source_domain", "published_date",
     "deadline_date", "date_status", "recipient_email", "candidate_headline", "fit_score",
     "fit_reason", "subject", "body", "status", "send_approved",
