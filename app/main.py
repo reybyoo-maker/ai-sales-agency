@@ -27,7 +27,7 @@ def save_rows(rows: list[dict]) -> None:
 
 def main() -> None:
     print('========================================')
-    print('BANDUNG JOB HUNTER | DISCOVERY + DRAFT')
+    print('BANDUNG JOB HUNTER | DISCOVERY + AI DRAFT')
     print('========================================')
 
     rows = load_rows()
@@ -67,15 +67,14 @@ def main() -> None:
             status = 'SIAP_KIRIM' if job.get('recipient_email') else 'WATCHLIST'
             row = {
                 **job,
+                'found_at': now_iso(),
                 'candidate_headline': profile.get('headline', ''),
                 'ai_project_note': profile.get('ai_project', AI_PROJECT_NOTE),
                 'subject': str(result.get('subject', '')).strip(),
                 'body': str(result.get('body', '')).strip(),
                 'status': status,
-                'send_approved': 'NO',
-                'discovered_at': now_iso(),
                 'sent_at': '',
-                'error': '',
+                'send_error': '',
             }
             rows.append(row)
             existing.add(job['job_id'])
