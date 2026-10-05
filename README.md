@@ -18,6 +18,30 @@ Aturan email:
 
 Sistem menggabungkan beberapa sumber publik dan query perusahaan besar. Tidak ada crawler yang bisa menjamin mencakup 100% internet.
 
+
+
+## 2A. Cakupan discovery
+
+Discovery dibuat multi-sumber untuk mencari seluas mungkin lowongan publik yang terindeks:
+- job board: JobStreet, Glints, Indeed, Kalibrr, Dealls, KitaLulus, Pintarnya, Talentics, KarirHub/Kemnaker, Karir.com, Loker.id, TopKarir, Urbanhire, EKRUT, Tech in Asia Jobs, Glassdoor;
+- jaringan profesional/sosial publik yang terindeks mesin pencari: LinkedIn Jobs, Instagram, Facebook, TikTok, serta halaman career perusahaan;
+- beberapa backend mesin pencari dengan fallback otomatis untuk mengurangi ketergantungan pada satu provider.
+
+Tidak ada crawler yang secara jujur dapat menjamin 100% internet, terutama konten yang login-only, aplikasi mobile-only, private group, atau halaman yang melarang crawler.
+
+## 2B. Pembacaan flyer/gambar
+
+Saat halaman lowongan dibuka, agent mengambil gambar dari:
+- og:image / Twitter image;
+- gambar pada HTML dan lazy-loaded image;
+- image pada JSON-LD;
+- beberapa URL gambar yang ditemukan pada CSS;
+- fallback image-search terkait ketika halaman tidak mengekspos gambar.
+
+Gambar lowongan diteruskan ke Gemini sebagai input multimodal. AI diminta membaca semua gambar yang tersedia, mengabaikan logo/icon yang bukan flyer, lalu mengekstrak fakta yang terlihat seperti posisi, perusahaan, deadline, email, WhatsApp, lokasi, benefit, syarat, dan cara melamar.
+
+Hasil ringkasannya disimpan di kolom `flyer_summary`, sedangkan URL gambar yang ditemukan disimpan di `flyer_image_urls`.
+
 ## 2. Google Sheets
 
 Sheet utama: Job Applications
