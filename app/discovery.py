@@ -24,8 +24,6 @@ from .config import (
     SEARCH_DELAY_SECONDS,
     SEARCH_RETRY_DELAY_SECONDS,
     SEARCH_RESULTS_PER_QUERY,
-    FLYER_IMAGE_SEARCH,
-    FLYER_IMAGE_RESULTS,
 )
 
 MONTHS = {
@@ -225,7 +223,7 @@ def fetch_page_details(url: str) -> tuple[str, list[str]]:
         if "text" not in content_type and "html" not in content_type:
             return "", []
         html = r.text[:3_000_000]
-        images = extract_image_urls(html, url, limit=10)
+        images = extract_image_urls(html, url, limit=FLYER_MAX_IMAGES)
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "noscript", "svg"]):
             tag.decompose()
@@ -313,13 +311,82 @@ def prospect_score(title: str, text: str, category: str, company_tier_value: str
 
     return min(score, 100), "; ".join(reasons)
 
+PLATFORM_INDEX_URLS = (
+    "https://id.linkedin.com/jobs/search?location=Bandung",
+    "https://glints.com/id/job-location/indonesia/jawa-barat/bandung",
+    "https://id.jobstreet.com/id/jobs/in-Bandung-Jawa-Barat",
+    "https://www.kitalulus.com/lowongan/in-kota-bandung",
+    "https://dealls.com/loker/lokasi/loker-bandung",
+)
+
+PLATFORM_DOMAINS = {
+    "linkedin.com", "id.linkedin.com", "glints.com", "id.jobstreet.com",
+    "kitalulus.com", "dealls.com",
+}
+
+VACANCY_SIGNALS = (
+    "lowongan", "lowong", "loker", "job vacancy", "vacancy",
+    "career", "careers", "recruitment", "hiring", "apply",
+    "staff", "specialist", "executive", "officer", "advisor",
+    "assistant", "manager", "supervisor", "coordinator",
+    "admin", "accounting", "finance", "hr", "hrd", "legal",
+    "secretary", "operations", "customer service", "marketing",
+    "content", "social media", "sales", "procurement",
+    "purchasing", "warehouse", "logistics", "brand", "seo", "kol",
+    "partnership", "business development",
+)
+
+def fetch_platform_index_items() -> list[dict]:
+    items: list[dict] = []
+    seen: set[str] = set()
+
+    for index_url in PLATFORM_INDEX_URLS:
+        try:
+            r = requests.get(
+                index_url,
+                timeout=20,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; BandungJobHunter/5.0)"},
+            )
+            r.raise_for_status()
+            soup = BeautifulSoup(r.text[:4_000_000], "html.parser")
+            count = 0
+            for a in soup.find_all("a", href=True):
+                href = normalize(a.get("href"))
+                title = normalize(a.get_text(" ", strip=True))
+                if not href or not title or len(title) < 4:
+                    continue
+                absolute = urljoin(index_url, href)
+                parsed_domain = domain(absolute)
+                if parsed_domain not in PLATFORM_DOMAINS:
+                    continue
+                low = f"{title} {absolute}".lower()
+                if not any(signal in low for signal in VACANCY_SIGNALS):
+                    continue
+                if absolute in seen:
+                    continue
+                seen.add(absolute)
+                items.append({
+                    "href": absolute,
+                    "title": title,
+                    "body": f"platform_index={parsed_domain}",
+                    "date": "",
+                })
+                count += 1
+                if count >= 100:
+                    break
+            print(f"PLATFORM INDEX | {index_url} | links={count}")
+        except requests.RequestException as exc:
+            print(f"PLATFORM INDEX ERROR | {index_url} | {type(exc).__name__}: {exc}")
+        except Exception as exc:
+            print(f"PLATFORM INDEX ERROR | {index_url} | {type(exc).__name__}: {exc}")
+    return items
+
 def search_once() -> list[dict]:
     now = datetime.now().astimezone()
-    # Keep the query set compact enough to avoid search-provider throttling.
-    # Search broadly first, then classify after fetching each result.
+
     queries = [
-        # LinkedIn Jobs
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" marketing',
+        f'site:linkedin.com/jobs/view "{LOCATION_QUERY}" marketing',
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" digital marketing',
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" social media',
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" content creator',
@@ -327,41 +394,24 @@ def search_once() -> list[dict]:
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" accounting finance',
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" HR recruitment',
         f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" operations customer service',
-
-        # Glints
-        f'site:glints.com "{LOCATION_QUERY}" marketing',
-        f'site:glints.com "{LOCATION_QUERY}" digital marketing social media',
-        f'site:glints.com "{LOCATION_QUERY}" content creator',
-        f'site:glints.com "{LOCATION_QUERY}" admin finance HR operations',
-
-        # JobStreet / SEEK
-        f'site:id.jobstreet.com "{LOCATION_QUERY}" marketing',
-        f'site:id.jobstreet.com "{LOCATION_QUERY}" admin',
-        f'site:id.jobstreet.com "{LOCATION_QUERY}" finance accounting HR',
-        f'site:id.jobstreet.com "{LOCATION_QUERY}" operations customer service',
-
-        # Indeed Indonesia
+        f'site:glints.com/id "{LOCATION_QUERY}" marketing',
+        f'site:glints.com/id "{LOCATION_QUERY}" digital marketing social media',
+        f'site:glints.com/id "{LOCATION_QUERY}" content creator',
+        f'site:glints.com/id "{LOCATION_QUERY}" admin finance HR operations',
+        f'site:id.jobstreet.com/id "{LOCATION_QUERY}" marketing',
+        f'site:id.jobstreet.com/id "{LOCATION_QUERY}" admin',
+        f'site:id.jobstreet.com/id "{LOCATION_QUERY}" finance accounting HR',
+        f'site:id.jobstreet.com/id "{LOCATION_QUERY}" operations customer service',
         f'site:id.indeed.com "{LOCATION_QUERY}" marketing',
         f'site:id.indeed.com "{LOCATION_QUERY}" admin finance',
         f'site:id.indeed.com "{LOCATION_QUERY}" HR operations',
         f'site:id.indeed.com "{LOCATION_QUERY}" customer service',
-
-        # Kalibrr
         f'site:kalibrr.com "{LOCATION_QUERY}" marketing',
         f'site:kalibrr.com "{LOCATION_QUERY}" admin finance HR',
-        f'site:kalibrr.com "{LOCATION_QUERY}" operations customer service',
-
-        # KitaLulus
         f'site:kitalulus.com "{LOCATION_QUERY}" marketing',
         f'site:kitalulus.com "{LOCATION_QUERY}" admin finance HR',
-        f'site:kitalulus.com "{LOCATION_QUERY}" operations customer service',
-
-        # Dealls
         f'site:dealls.com "{LOCATION_QUERY}" marketing',
         f'site:dealls.com "{LOCATION_QUERY}" admin finance HR',
-        f'site:dealls.com "{LOCATION_QUERY}" operations customer service',
-
-        # Portal kerja Indonesia lainnya
         f'site:pintarnya.com "{LOCATION_QUERY}" lowongan marketing admin',
         f'site:pintarnya.com "{LOCATION_QUERY}" lowongan finance HR operations',
         f'site:talentics.id "{LOCATION_QUERY}" lowongan marketing admin',
@@ -385,12 +435,10 @@ def search_once() -> list[dict]:
         f'site:hiredtoday.com "{LOCATION_QUERY}" lowongan',
         f'site:toploker.com "{LOCATION_QUERY}" lowongan',
         f'site:redy.id "{LOCATION_QUERY}" lowongan',
-
-        # Lamaran langsung via email / flyer
         f'"{LOCATION_QUERY}" "kirim CV" gmail marketing',
         f'"{LOCATION_QUERY}" "kirim CV" gmail admin finance HR',
         f'"{LOCATION_QUERY}" "lamaran melalui email" gmail',
-        f'"{LOCATION_QUERY}" "recruitment" gmail "lowongan"',
+        f'"{LOCATION_QUERY}" "recruitment" gmail lowongan',
         f'"{LOCATION_QUERY}" "poster lowongan" marketing',
         f'"{LOCATION_QUERY}" "poster lowongan" admin HR',
         f'"{LOCATION_QUERY}" "flyer lowongan" Bandung',
@@ -399,10 +447,98 @@ def search_once() -> list[dict]:
     rows: list[dict] = []
     seen: set[str] = set()
 
-    # Google is the only search backend. Queries are restricted to job platforms.
+    def consume_items(items: list[dict], source_label: str) -> bool:
+        for item in items:
+            url = normalize(item.get("href", ""))
+            title = normalize(item.get("title", ""))
+            snippet = normalize(item.get("body", ""))
+            if not url or not title:
+                continue
+
+            search_text = normalize(f"{title} {snippet}")
+            title_and_snippet = search_text.lower()
+            if not any(signal in title_and_snippet for signal in VACANCY_SIGNALS):
+                continue
+
+            page_text, image_urls = fetch_page_details(url)
+            full_text = normalize(f"{search_text} {page_text}")
+            if LOCATION_QUERY.lower() not in full_text.lower():
+                continue
+
+            email = extract_gmail(search_text) or extract_gmail(page_text)
+            extracted_company = extract_company(title, full_text)
+            famous_without_gmail = (
+                company_tier(extracted_company, title) == "famous" and not email
+            )
+            has_flyer = bool(image_urls)
+
+            # Allow flyer-first listings through even when email is only visible
+            # inside the image; Gemini will inspect the flyer before routing.
+            if not email and not famous_without_gmail and not has_flyer:
+                continue
+            if email and not has_application_context(full_text, email):
+                continue
+
+            category = classify(title, full_text)
+            if not category:
+                continue
+
+            fresh, published, date_status = freshness(
+                full_text, str(item.get("date", "")), now
+            )
+            if not fresh:
+                continue
+
+            tier = company_tier(extracted_company, title)
+            published_dt = parse_date(published, now) if published else None
+            age_days = max(0, (now.date() - published_dt.date()).days) if published_dt else ""
+            score, score_reason = prospect_score(
+                title, full_text, category, tier, email, published, date_status, domain(url)
+            )
+            if has_flyer and not email:
+                score = min(100, score + 10)
+                score_reason = (score_reason + "; flyer terdeteksi +10").strip("; ")
+
+            job_id = make_id(title, email, url)
+            if job_id in seen:
+                continue
+            seen.add(job_id)
+
+            rows.append({
+                "job_id": job_id,
+                "job_title": title[:180],
+                "company": extracted_company or "Perusahaan",
+                "company_tier": tier,
+                "category": category,
+                "work_mode": work_mode(full_text),
+                "location": LOCATION_QUERY,
+                "source_url": url,
+                "flyer_image_urls": " | ".join(image_urls),
+                "source_domain": domain(url),
+                "published_date": published,
+                "deadline_date": "",
+                "date_status": date_status,
+                "age_days": age_days if published else "",
+                "recipient_email": email,
+                "application_method": "GMAIL" if email else ("FLYER/PORTAL" if has_flyer else "PORTAL/ATS"),
+                "prospect_score": score,
+                "score_reason": score_reason,
+                "snippet": search_text[:1500],
+                "notes": source_label,
+            })
+
+            if len(rows) >= MAX_DISCOVERED_PER_RUN:
+                return True
+        return False
+
+    direct_items = fetch_platform_index_items()
+    print(f"PLATFORM DIRECT DISCOVERED={len(direct_items)}")
+    if consume_items(direct_items, "direct_platform"):
+        return rows
+
     with DDGS(timeout=20) as ddgs:
         for query_index, query in enumerate(queries, start=1):
-            items = []
+            items: list[dict] = []
             for backend_name in SEARCH_BACKENDS:
                 try:
                     items = ddgs.text(
@@ -430,93 +566,7 @@ def search_once() -> list[dict]:
                 print(f"SEARCH SKIPPED | query={query_index}/{len(queries)}")
             time.sleep(SEARCH_DELAY_SECONDS)
 
-            for item in items or []:
-                url = normalize(item.get("href", ""))
-                title = normalize(item.get("title", ""))
-                snippet = normalize(item.get("body", ""))
-                if not url or not title:
-                    continue
-
-                search_text = normalize(f"{title} {snippet}")
-                title_and_snippet = search_text.lower()
-                vacancy_signals = (
-                    "lowongan", "lowong", "loker", "job vacancy", "vacancy",
-                    "career", "careers", "recruitment", "hiring", "apply",
-                    "staff", "specialist", "executive", "officer", "advisor",
-                    "assistant", "manager", "supervisor", "coordinator",
-                    "admin", "accounting", "finance", "hr", "hrd", "legal",
-                    "secretary", "operations", "customer service", "marketing",
-                    "content", "social media", "sales", "procurement",
-                    "purchasing", "warehouse", "logistics", "brand", "seo", "kol",
-                    "partnership", "business development",
-                )
-                if not any(signal in title_and_snippet for signal in vacancy_signals):
-                    continue
-
-                page_text, image_urls = fetch_page_details(url)
-
-                full_text = normalize(f"{search_text} {page_text}")
-                if LOCATION_QUERY.lower() not in full_text.lower():
-                    continue
-
-                email = extract_gmail(search_text)
-                if not email:
-                    email = extract_gmail(page_text)
-
-                extracted_company = extract_company(title, full_text)
-                famous_without_gmail = (
-                    company_tier(extracted_company, title) == "famous" and not email
-                )
-                if not email and not famous_without_gmail:
-                    continue
-                if email and not has_application_context(full_text, email):
-                    continue
-
-                category = classify(title, full_text)
-                if not category:
-                    continue
-
-                fresh, published, date_status = freshness(
-                    full_text, str(item.get("date", "")), now
-                )
-                if not fresh:
-                    continue
-
-                tier = company_tier(extracted_company, title)
-                published_dt = parse_date(published, now) if published else None
-                age_days = max(0, (now.date() - published_dt.date()).days) if published_dt else ""
-                score, score_reason = prospect_score(
-                    title, full_text, category, tier, email, published, date_status, domain(url)
-                )
-                job_id = make_id(title, email, url)
-                if job_id in seen:
-                    continue
-                seen.add(job_id)
-
-                rows.append({
-                    "job_id": job_id,
-                    "job_title": title[:180],
-                    "company": extracted_company or "Perusahaan",
-                    "company_tier": tier,
-                    "category": category,
-                    "work_mode": work_mode(full_text),
-                    "location": LOCATION_QUERY,
-                    "source_url": url,
-                    "flyer_image_urls": " | ".join(image_urls),
-                    "source_domain": domain(url),
-                    "published_date": published,
-                    "deadline_date": "",
-                    "date_status": date_status,
-                    "age_days": age_days if published else "",
-                    "recipient_email": email,
-                    "application_method": "GMAIL" if email else "PORTAL/ATS",
-                    "prospect_score": score,
-                    "score_reason": score_reason,
-                    "snippet": search_text[:1500],
-                    "notes": f"query={query}",
-                })
-
-                if len(rows) >= MAX_DISCOVERED_PER_RUN:
-                    return rows
+            if consume_items(items, f"google_query={query_index}"):
+                return rows
 
     return rows
