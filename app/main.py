@@ -15,85 +15,183 @@ from .config import (
 )
 from .discovery import discover
 from .gemini_batch import generate_prospect
-from .outreach import build_message, send_email, wa_link
+from .outreach import build_message, send_email
 from .sheets import append_prospect, get_ws, records, update
 
 
 def now_iso() -> str:
-    return datetime.now(ZoneInfo(TIMEZONE)).isoformat()
+    return datetime.now(
+        ZoneInfo(TIMEZONE)
+    ).isoformat()
 
 
-def norm(v: str) -> str:
-    return (v or "").strip().lower().rstrip("/")
-
-
-def daily_sent(rows: list[dict]) -> int:
-    today = datetime.now(ZoneInfo(TIMEZONE)).date().isoformat()
-
-    return sum(
-        1
-        for r in rows
-        if norm(str(r.get("outreach_status", ""))) == "contacted"
-        and str(r.get("outreach_at", "")).startswith(today)
+def norm(value: str) -> str:
+    return (
+        str(value or "")
+        .strip()
+        .lower()
+        .rstrip("/")
     )
 
 
-def discover_and_append(ws, rows: list[dict]) -> int:
-    existing = set()
+def daily_sent(rows: list[dict]) -> int:
+    today = datetime.now(
+        ZoneInfo(TIMEZONE)
+    ).date().isoformat()
 
-    for r in rows:
-        for field in ("email", "website", "instagram", "phone"):
-            value = norm(str(r.get(field, "")))
+    return sum(
+        1
+        for row in rows
+        if norm(
+            row.get(
+                "outreach_status",
+                "",
+            )
+        ) == "contacted"
+        and str(
+            row.get(
+                "outreach_at",
+                "",
+            )
+        ).startswith(today)
+    )
+
+
+def is_opted_out(row: dict) -> bool:
+    return norm(
+        row.get(
+            "opt_out",
+            "",
+        )
+    ) in {
+        "yes",
+        "true",
+        "1",
+        "stop",
+    }
+
+
+def discover_and_append(
+    ws,
+    rows: list[dict],
+) -> int:
+    existing_keys: set[tuple[str, str]] = set()
+
+    for row in rows:
+        for field in (
+            "email",
+            "website",
+            "source_url",
+            "intent_url",
+        ):
+            value = norm(
+                row.get(
+                    field,
+                    "",
+                )
+            )
+
             if value:
-                existing.add((field, value))
+                existing_keys.add(
+                    (field, value)
+                )
 
     try:
-        found = discover(limit=DISCOVERY_PER_RUN)
-        print(f"Discovery returned: {len(found)} prospects")
+        found = discover(
+            limit=DISCOVERY_PER_RUN
+        )
+
+        print(
+            f"Discovery returned: "
+            f"{len(found)} prospects"
+        )
+
     except Exception as exc:
-        print(f"DISCOVERY ERROR: {type(exc).__name__}: {exc}")
+        print(
+            "DISCOVERY ERROR: "
+            f"{type(exc).__name__}: {exc}"
+        )
         return 0
 
     added = 0
     skipped = 0
 
     for prospect in found:
-        business_name = str(
-            prospect.get("business_name", "")
-        ).strip()
+        business_name = (
+            str(
+                prospect.get(
+                    "business_name",
+                    "",
+                )
+            ).strip()
+            or "Unknown Buyer"
+        )
 
         keys = []
 
-        for field in ("email", "website", "instagram", "phone"):
-            value = norm(str(prospect.get(field, "")))
+        for field in (
+            "email",
+            "website",
+            "source_url",
+            "intent_url",
+        ):
+            value = norm(
+                prospect.get(
+                    field,
+                    "",
+                )
+            )
+
             if value:
-                keys.append((field, value))
+                keys.append(
+                    (field, value)
+                )
 
         duplicate_keys = [
-            key for key in keys if key in existing
+            key
+            for key in keys
+            if key in existing_keys
         ]
 
         if duplicate_keys:
             skipped += 1
+
             print(
-                f"SKIP DUPLICATE: "
-                f"{business_name} | {duplicate_keys}"
+                "SKIP DUPLICATE: "
+                f"{business_name} | "
+                f"{duplicate_keys}"
             )
+
             continue
 
         try:
-            append_prospect(ws, prospect)
-            existing.update(keys)
+            append_prospect(
+                ws,
+                prospect,
+            )
+
+            existing_keys.update(
+                keys
+            )
+
             added += 1
-            print(f"ADDED: {business_name}")
+
+            print(
+                "ADDED: "
+                f"{business_name} | "
+                f"email={prospect.get('email', '') or 'NO EMAIL'} | "
+                f"intent={prospect.get('intent_type', '')}"
+            )
+
         except Exception as exc:
             print(
-                f"SHEET APPEND ERROR {business_name}: "
+                "SHEET APPEND ERROR "
+                f"{business_name}: "
                 f"{type(exc).__name__}: {exc}"
             )
 
     print(
-        f"Discovery summary: "
+        "Discovery summary: "
         f"found={len(found)}, "
         f"added={added}, "
         f"duplicate={skipped}"
@@ -102,66 +200,93 @@ def discover_and_append(ws, rows: list[dict]) -> int:
     return added
 
 
-def process_ai(ws, rows: list[dict]) -> int:
-    max_items = min(
+def process_ai(
+    ws,
+    rows: list[dict],
+) -> int:
+    candidates: list[tuple[int, dict]] = []
+
+    max_items = max(
+        1,
         BATCH_MAX_PROSPECTS,
-        DAILY_OUTREACH_LIMIT,
     )
 
-    candidates = []
-
-    for idx, row in enumerate(rows, start=2):
+    for row_number, row in enumerate(
+        rows,
+        start=2,
+    ):
         status = norm(
-            str(row.get("outreach_status", ""))
+            row.get(
+                "outreach_status",
+                "",
+            )
         )
 
-        if status not in {"new", "error"}:
-            continue
-
-        if norm(str(row.get("opt_out", ""))) in {
-            "yes",
-            "true",
-            "1",
-            "stop",
+        if status not in {
+            "new",
+            "error",
         }:
             continue
 
-        email = str(row.get("email", "")).strip()
-
-        if "@" not in email:
+        if is_opted_out(row):
             continue
 
-        if "." not in email.split("@")[-1]:
+        email = str(
+            row.get(
+                "email",
+                "",
+            )
+        ).strip()
+
+        if (
+            "@" not in email
+            or "." not in email.rsplit("@", 1)[-1]
+        ):
             continue
 
-        candidates.append((idx, row))
+        candidates.append(
+            (
+                row_number,
+                row,
+            )
+        )
 
         if len(candidates) >= max_items:
             break
 
     if not candidates:
-        print("No AI candidates found.")
+        print(
+            "No AI candidates found."
+        )
         return 0
 
     print(
-        f"Processing Gemini directly for "
+        "Processing Gemini for "
         f"{len(candidates)} prospects..."
     )
 
     processed = 0
 
-    for i, (row_number, row) in enumerate(
+    for index, (
+        row_number,
+        row,
+    ) in enumerate(
         candidates,
         start=1,
     ):
         business_name = (
-            str(row.get("business_name", "")).strip()
-            or "bisnis ini"
+            str(
+                row.get(
+                    "business_name",
+                    "",
+                )
+            ).strip()
+            or "Unknown Buyer"
         )
 
         print(
-            f"[{i}/{len(candidates)}] "
-            f"Analyzing: {business_name}"
+            f"[AI {index}/{len(candidates)}] "
+            f"{business_name}"
         )
 
         try:
@@ -169,68 +294,99 @@ def process_ai(ws, rows: list[dict]) -> int:
                 ws,
                 row_number,
                 outreach_status="AI_PROCESSING",
-                notes=f"ai_started_at={now_iso()}",
+                notes=(
+                    f"AI started "
+                    f"{now_iso()}"
+                ),
             )
 
-            result = generate_prospect(row)
+            result = generate_prospect(
+                row
+            )
 
-            score = result.get("score", "")
+            fit = norm(
+                result.get(
+                    "fit",
+                    "",
+                )
+            )
+
+            score = result.get(
+                "score",
+                "",
+            )
+
+            reasons = (
+                result.get(
+                    "observed_gaps",
+                    [],
+                )
+                or []
+            )
 
             summary = "; ".join(
-                str(x)
-                for x in (
-                    result.get("observed_gaps", [])
-                    or []
-                )[:3]
+                str(item)
+                for item in reasons[:4]
+            )
+
+            subject = (
+                str(
+                    result.get(
+                        "subject",
+                        "",
+                    )
+                ).strip()
             )
 
             body = build_message(
-                str(result.get("body", "")),
+                str(
+                    result.get(
+                        "body",
+                        "",
+                    )
+                ),
                 business_name,
-            ).strip()
-
-            link = wa_link(
-                business_name
-            ).strip()
-
-            fit = norm(
-                str(result.get("fit", ""))
             )
+
+            contact_angle = str(
+                result.get(
+                    "contact_angle",
+                    "",
+                )
+            ).strip()
 
             if fit == "not_a_business_lead":
                 status = "SKIPPED"
             else:
                 status = "READY"
 
-            subject = str(
-                result.get(
-                    "subject",
-                    "Landing page untuk bisnis Anda",
-                )
-            ).strip()
-
-            contact_angle = str(
-                result.get("contact_angle", "")
-            ).strip()
-
             update(
                 ws,
                 row_number,
+                intent_score=(
+                    row.get(
+                        "intent_score",
+                        "",
+                    )
+                ),
                 audit_score=score,
                 audit_summary=summary,
-                message_subject=subject,
-                message_body=body,
-                wa_link=link,
                 outreach_status=status,
                 outreach_at="",
-                notes=contact_angle,
+                message_subject=subject,
+                message_body=body,
+                notes=(
+                    contact_angle
+                    or summary
+                ),
             )
 
             processed += 1
 
             print(
-                f"OK row {row_number}: "
-                f"{business_name} -> {status}"
+                f"AI OK row={row_number} "
+                f"score={score} "
+                f"status={status}"
             )
 
         except Exception as exc:
@@ -246,26 +402,13 @@ def process_ai(ws, rows: list[dict]) -> int:
             )
 
             print(
-                f"AI ERROR row {row_number}: "
+                "AI ERROR "
+                f"row={row_number}: "
                 f"{error_message}"
             )
 
-        if (
-            i < len(candidates)
-            and SEND_DELAY_SECONDS > 0
-        ):
-            time.sleep(
-                max(
-                    1,
-                    min(
-                        SEND_DELAY_SECONDS,
-                        15,
-                    ),
-                )
-            )
-
     print(
-        f"Gemini processing completed: "
+        "Gemini processing completed: "
         f"{processed}/{len(candidates)}"
     )
 
@@ -279,7 +422,7 @@ def send_ready(
 ) -> int:
     if TEST_MODE:
         print(
-            "TEST_MODE=True -> "
+            "TEST_MODE=true -> "
             "email sending disabled."
         )
         return 0
@@ -290,7 +433,9 @@ def send_ready(
     )
 
     if remaining <= 0:
-        print("Daily email limit reached.")
+        print(
+            "Daily outreach limit reached."
+        )
         return 0
 
     quota = min(
@@ -298,77 +443,55 @@ def send_ready(
         remaining,
     )
 
-    candidates = []
+    candidates: list[tuple[int, dict]] = []
 
-    for idx, row in enumerate(
+    for row_number, row in enumerate(
         rows,
         start=2,
     ):
-        status = norm(
-            str(
-                row.get(
-                    "outreach_status",
-                    "",
-                )
-            )
-        )
-
-        if status != "ready":
-            continue
-
-        # WAJIB ada izin email.
-        email_opt_in = norm(
-            str(
-                row.get(
-                    "email_opt_in",
-                    "",
-                )
-            )
-        )
-
-        if email_opt_in not in {
-            "yes",
-            "true",
-            "1",
-        }:
-            print(
-                f"SKIP EMAIL NO CONSENT: "
-                f"{row.get('business_name')}"
-            )
-            continue
-
-        # Tetap hormati opt-out.
         if norm(
-            str(
-                row.get(
-                    "opt_out",
-                    "",
-                )
+            row.get(
+                "outreach_status",
+                "",
             )
-        ) in {
+        ) != "ready":
+            continue
+
+        if is_opted_out(row):
+            continue
+
+        approval = norm(
+            row.get(
+                "send_approved",
+                "",
+            )
+        )
+
+        if approval not in {
             "yes",
             "true",
             "1",
-            "stop",
         }:
             continue
 
-        email = (
-            str(
-                row.get(
-                    "email",
-                    "",
-                )
+        email = str(
+            row.get(
+                "email",
+                "",
             )
-            .strip()
-            .lower()
-        )
+        ).strip()
 
-        if "@" not in email:
+        if (
+            "@" not in email
+            or "." not in email.rsplit("@", 1)[-1]
+        ):
             continue
 
         candidates.append(
-            (idx, row)
+            (
+                row_number,
+                row,
+            )
         )
 
         if len(candidates) >= quota:
@@ -376,19 +499,21 @@ def send_ready(
 
     if not candidates:
         print(
-            "No READY prospects with "
-            "email_opt_in=yes."
+            "No approved READY prospects."
         )
         return 0
 
     print(
         f"Sending {len(candidates)} "
-        f"authorized emails..."
+        "approved emails..."
     )
 
     sent = 0
 
-    for i, (row_number, row) in enumerate(
+    for index, (
+        row_number,
+        row,
+    ) in enumerate(
         candidates,
         start=1,
     ):
@@ -403,7 +528,7 @@ def send_ready(
                 str(
                     row.get(
                         "message_subject",
-                        "Ide landing page untuk bisnis Anda",
+                        "B2B lead database",
                     )
                 ),
                 str(
@@ -424,17 +549,18 @@ def send_ready(
             sent += 1
 
             print(
-                f"SENT {i}/{len(candidates)}: "
+                f"SENT {index}/"
+                f"{len(candidates)}: "
                 f"{row.get('business_name')} -> "
                 f"{row.get('email')}"
             )
 
-            if i < len(candidates):
+            if (
+                index < len(candidates)
+                and SEND_DELAY_SECONDS > 0
+            ):
                 time.sleep(
-                    max(
-                        15,
-                        SEND_DELAY_SECONDS,
-                    )
+                    SEND_DELAY_SECONDS
                 )
 
         except Exception as exc:
@@ -450,7 +576,8 @@ def send_ready(
             )
 
             print(
-                f"SEND ERROR row {row_number}: "
+                f"SEND ERROR row "
+                f"{row_number}: "
                 f"{error_message}"
             )
 
@@ -458,6 +585,20 @@ def send_ready(
 
 
 def main() -> None:
+    print(
+        "========================================"
+    )
+    print(
+        "AI SALES AGENCY — B2B LEAD DATABASE"
+    )
+    print(
+        "========================================"
+    )
+
+    print(
+        f"TEST_MODE: {TEST_MODE}"
+    )
+
     ws = get_ws()
 
     rows = records(ws)
@@ -467,16 +608,8 @@ def main() -> None:
         rows,
     )
 
-    rows = records(ws)
-
-    sent = daily_sent(rows)
-
-    print("=== AI SALES AGENCY ===")
-    print(f"TEST_MODE: {TEST_MODE}")
-    print(f"New prospects: {added}")
     print(
-        f"Sent today: "
-        f"{sent}/{DAILY_OUTREACH_LIMIT}"
+        f"New prospects added: {added}"
     )
 
     rows = records(ws)
@@ -487,21 +620,29 @@ def main() -> None:
     )
 
     print(
-        f"AI processed this run: "
-        f"{processed}"
+        f"AI processed: {processed}"
     )
 
     rows = records(ws)
 
-    sent_now = send_ready(
+    sent = send_ready(
         ws,
         rows,
         daily_sent(rows),
     )
 
     print(
-        f"Emails sent this run: "
-        f"{sent_now}"
+        f"Emails sent: {sent}"
+    )
+
+    print(
+        "========================================"
+    )
+    print(
+        "RUN COMPLETE"
+    )
+    print(
+        "========================================"
     )
 
 
