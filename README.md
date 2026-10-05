@@ -36,7 +36,7 @@ Saat halaman lowongan dibuka, agent mengambil gambar dari:
 - gambar pada HTML dan lazy-loaded image;
 - image pada JSON-LD;
 - beberapa URL gambar yang ditemukan pada CSS;
-- fallback image-search terkait ketika halaman tidak mengekspos gambar.
+- gambar yang tersedia langsung dari halaman platform; tidak ada ketergantungan pada pencarian gambar Bing/Brave.
 
 Gambar lowongan diteruskan ke Gemini sebagai input multimodal. AI diminta membaca semua gambar yang tersedia, mengabaikan logo/icon yang bukan flyer, lalu mengekstrak fakta yang terlihat seperti posisi, perusahaan, deadline, email, WhatsApp, lokasi, benefit, syarat, dan cara melamar.
 
