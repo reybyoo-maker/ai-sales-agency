@@ -31,14 +31,14 @@ Tidak ada crawler yang secara jujur dapat menjamin 100% internet, terutama konte
 
 ## 2B. Pembacaan flyer/gambar
 
-Saat halaman lowongan dibuka, agent mengambil gambar dari:
+Saat halaman detail lowongan dibuka, agent mengambil gambar dari:
 - og:image / Twitter image;
 - gambar pada HTML dan lazy-loaded image;
 - image pada JSON-LD;
 - beberapa URL gambar yang ditemukan pada CSS;
 - gambar yang tersedia langsung dari halaman platform; tidak ada ketergantungan pada pencarian gambar Bing/Brave.
 
-Gambar lowongan diteruskan ke Gemini sebagai input multimodal. AI diminta membaca semua gambar yang tersedia, mengabaikan logo/icon yang bukan flyer, lalu mengekstrak fakta yang terlihat seperti posisi, perusahaan, deadline, email, WhatsApp, lokasi, benefit, syarat, dan cara melamar.
+Gambar lowongan diteruskan ke Gemini sebagai input multimodal. Logo, favicon, avatar, icon, dan gambar non-flyer disaring lebih dulu. AI kemudian membaca semua gambar lowongan yang tersisa dan mengekstrak fakta seperti posisi, perusahaan, deadline, email Gmail, WhatsApp, lokasi, benefit, syarat, dan cara melamar.
 
 Hasil ringkasannya disimpan di kolom `flyer_summary`, sedangkan URL gambar yang ditemukan disimpan di `flyer_image_urls`.
 
