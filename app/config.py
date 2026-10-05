@@ -21,6 +21,8 @@ SEND_ENABLED = False
 CANDIDATE_NAME = os.getenv("CANDIDATE_NAME", "").strip()
 CANDIDATE_WA = os.getenv("CANDIDATE_WA", "6287813871926").strip()
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "reybyoo@gmail.com").strip()
+CANDIDATE_HEADLINE = os.getenv("CANDIDATE_HEADLINE", "Leader | Mentor | Marketing Officer | Data Analyst | Digital Marketing | Promotion | Influencer").strip()
+AI_PROJECT_NOTE = os.getenv("AI_PROJECT_NOTE", "Currently developing an Agent Agency AI project to simplify and improve work processes.").strip()
 
 CV_PDF_PATH = Path(os.getenv("CV_PDF_PATH", "assets/CV.pdf")).expanduser()
 CV_PDF_BASE64 = os.getenv("CV_PDF_BASE64", "").strip()
@@ -78,7 +80,7 @@ OPEN_BLOCK_TERMS = (
 CSV_FIELDS = [
     "job_id", "job_title", "company", "category", "work_mode",
     "location", "source_url", "source_domain", "published_date",
-    "deadline_date", "date_status", "recipient_email", "fit_score",
+    "deadline_date", "date_status", "recipient_email", "candidate_headline", "fit_score",
     "fit_reason", "subject", "body", "status", "send_approved",
     "discovered_at", "sent_at", "error", "notes",
 ]
