@@ -40,3 +40,5 @@ Gunakan kredensial Gmail yang aman; jangan memasukkan password Gmail biasa ke re
 
 ## Catatan
 Tidak ada mesin pencari yang dapat menjamin benar-benar melihat semua lowongan di internet. Sistem menggabungkan beberapa query publik, melakukan deduplikasi, dan menyimpan hasil yang terdeteksi.
+## Kirim setelah review
+Untuk mengirim satu lamaran yang sudah berstatus `READY`, gunakan `python -m app.send_single JOB_ID` pada environment yang memiliki kredensial Gmail dan CV PDF. Sistem pengiriman tidak mempunyai mode bulk 100-300 email otomatis.
