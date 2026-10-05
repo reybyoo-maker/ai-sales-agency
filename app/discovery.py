@@ -186,6 +186,45 @@ def freshness(text: str, search_date: str, now: datetime) -> tuple[bool, str, st
 
     return False, published, "date_unknown"
 
+def prospect_score(title: str, text: str, category: str, company_tier_value: str, recipient_email: str, published: str, date_status: str, source_domain: str) -> tuple[int, str]:
+    hay = f"{title} {text}".lower()
+    score = 0
+    reasons = []
+
+    if date_status == "fresh":
+        dt = parse_date(published, datetime.now().astimezone()) if published else None
+        if dt:
+            age = max(0, (datetime.now().astimezone().date() - dt.date()).days)
+            freshness_points = max(10, 40 - min(age, 14) * 2)
+        else:
+            freshness_points = 25
+        score += freshness_points
+        reasons.append(f"freshness +{freshness_points}")
+    elif date_status == "deadline_open":
+        score += 35
+        reasons.append("deadline aktif +35")
+
+    if recipient_email:
+        score += 25
+        reasons.append("Gmail lamaran +25")
+
+    if category == "marketing":
+        score += 20
+        reasons.append("marketing +20")
+    elif category == "back_office":
+        score += 18
+        reasons.append("back office +18")
+
+    if company_tier_value == "famous":
+        score += 10
+        reasons.append("perusahaan terkenal +10")
+
+    if source_domain in {"linkedin.com", "jobstreet.co.id", "glints.com", "indeed.com", "kalibrr.com"}:
+        score += 5
+        reasons.append("sumber job market +5")
+
+    return min(score, 100), "; ".join(reasons)
+
 def search_once() -> list[dict]:
     now = datetime.now().astimezone()
     queries = [
@@ -229,6 +268,21 @@ def search_once() -> list[dict]:
         f'"{LOCATION_QUERY}" lowongan Shopee gmail',
         f'"{LOCATION_QUERY}" lowongan Traveloka gmail',
         f'"{LOCATION_QUERY}" lowongan "Dale Carnegie" gmail',
+        f'"{LOCATION_QUERY}" lowongan Astra',
+        f'"{LOCATION_QUERY}" lowongan "Astra International"',
+        f'"{LOCATION_QUERY}" lowongan Unilever',
+        f'"{LOCATION_QUERY}" lowongan Danone',
+        f'"{LOCATION_QUERY}" lowongan EIGER',
+        f'"{LOCATION_QUERY}" lowongan Telkom',
+        f'"{LOCATION_QUERY}" lowongan BCA',
+        f'"{LOCATION_QUERY}" lowongan "Bank Mandiri"',
+        f'"{LOCATION_QUERY}" lowongan BRI',
+        f'"{LOCATION_QUERY}" lowongan BNI',
+        f'"{LOCATION_QUERY}" lowongan Grab',
+        f'"{LOCATION_QUERY}" lowongan Gojek',
+        f'"{LOCATION_QUERY}" lowongan Tokopedia',
+        f'"{LOCATION_QUERY}" lowongan Shopee',
+        f'"{LOCATION_QUERY}" lowongan Traveloka',
 
         f'site:glints.com "{LOCATION_QUERY}" lowongan gmail',
         f'site:id.indeed.com "{LOCATION_QUERY}" lowongan gmail',
@@ -283,6 +337,8 @@ def search_once() -> list[dict]:
                 if not fresh:
                     continue
 
+                tier = company_tier(extract_company(title, full_text), full_text)
+                score, score_reason = prospect_score(title, full_text, category, tier, email, published, date_status, domain(url))
                 job_id = make_id(title, email, url)
                 if job_id in seen:
                     continue
@@ -292,7 +348,7 @@ def search_once() -> list[dict]:
                     "job_id": job_id,
                     "job_title": title[:180],
                     "company": extract_company(title, full_text) or "Perusahaan",
-                    "company_tier": company_tier(extract_company(title, full_text), full_text),
+                    "company_tier": tier,
                     "category": category,
                     "work_mode": work_mode(full_text),
                     "location": LOCATION_QUERY,
@@ -302,6 +358,8 @@ def search_once() -> list[dict]:
                     "deadline_date": "",
                     "date_status": date_status,
                     "recipient_email": email,
+                    "prospect_score": score,
+                    "score_reason": score_reason,
                     "snippet": search_text[:1500],
                     "notes": f"query={query}",
                 })
