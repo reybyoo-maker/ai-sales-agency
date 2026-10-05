@@ -14,24 +14,27 @@ Repo ini sekarang menjadi mesin pencari lowongan kerja Bandung berbasis CV.
 CV PDF menjadi sumber utama. Gemini membaca CV dan lowongan, memberi fit score, lalu membuat subject dan body email yang berbeda untuk setiap posisi. Pengalaman atau skill tidak boleh diada-adakan.
 
 Subjek default:
-`Lamaran [Nama Posisi] - [Nama Kandidat] | WA 6287813871926`
+`Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA 6287813871926`
+
+AI dapat memendekkan subject bila nama posisi terlalu panjang. Project disebut secara natural, bukan sebagai pengalaman kerja fiktif.
 
 Body menyebut CV terlampir dan WhatsApp 6287813871926.
 
 ## Google Sheets
-Tab `Job Applications` menyimpan job_id, posisi, perusahaan, kategori, work mode, sumber, tanggal, Gmail penerima, fit score, alasan kecocokan, subject, body, status, dan approval.
+Tab `Job Applications` otomatis membuat/menambahkan header: job_id, job_title, company, company_tier, category, work_mode, location, source_url, published_date, deadline_date, recipient_email, candidate_headline, ai_project_note, fit_score, fit_reason, subject, body, status, send_approved, dan timestamp. Jadi kolom `candidate_headline` akan terisi otomatis dengan headline CV.
 
 ## Jadwal
 GitHub Actions menjalankan discovery beberapa kali pada pagi hari kerja WIB. Jadwal UTC `0,2,4` setara sekitar 07:00, 09:00, dan 11:00 WIB. Benchmark 2026 yang tersedia cenderung menempatkan Selasa-Kamis pagi sebagai window yang baik, tetapi timing bukan jaminan diterima dan kualitas kecocokan tetap faktor utama.
 
 ## Secrets
-- `CANDIDATE_NAME`
-- `CV_PDF_BASE64`
+- `CV_PDF_BASE64` — CV PDF disimpan sebagai GitHub Actions secret, bukan di repository publik.
 - `GEMINI_API_KEY`
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SERVICE_ACCOUNT_JSON`
 
-Email kandidat dikonfigurasi sebagai `reybyoo@gmail.com` dan WhatsApp sebagai `6287813871926` di workflow.
+Untuk mengisi `CV_PDF_BASE64` dari file CV di komputer: `base64 -w 0 Reynaldi_Kurnia_Sonjaya_Resume.pdf | gh secret set CV_PDF_BASE64` (macOS: gunakan `base64 < file.pdf | tr -d '\\n' | gh secret set CV_PDF_BASE64`).
+
+Email kandidat dikonfigurasi sebagai `reybyoo@gmail.com` dan WhatsApp sebagai `6287813871926` di workflow. Perlu diperhatikan: CV yang diunggah saat ini masih menampilkan email `reynaldis334@gmail.com`; sebaiknya samakan email di CV dengan alamat pengirim sebelum mulai melamar agar tidak membingungkan HR.
 
 ## Pengiriman
 Mesin ini otomatis mencari, menyaring, menganalisis, dan menyiapkan lamaran. Pengiriman massal tanpa review tidak diaktifkan. Baris yang lolos berstatus `READY` sehingga bisa ditinjau sebelum dikirim.
