@@ -23,9 +23,9 @@ Sistem menggabungkan beberapa sumber publik dan query perusahaan besar. Tidak ad
 ## 2A. Cakupan discovery
 
 Discovery dibuat multi-sumber untuk mencari seluas mungkin lowongan publik yang terindeks:
-- job board: JobStreet, Glints, Indeed, Kalibrr, Dealls, KitaLulus, Pintarnya, Talentics, KarirHub/Kemnaker, Karir.com, Loker.id, TopKarir, Urbanhire, EKRUT, Tech in Asia Jobs, Glassdoor;
-- jaringan profesional/sosial publik yang terindeks mesin pencari: LinkedIn Jobs, Instagram, Facebook, TikTok, serta halaman career perusahaan;
-- beberapa backend mesin pencari dengan fallback otomatis untuk mengurangi ketergantungan pada satu provider.
+- LinkedIn Jobs dan Glints sebagai sumber utama.
+- portal kerja Indonesia: JobStreet, Indeed, Kalibrr, KitaLulus, Dealls, Pintarnya, Talentics, KarirHub/Kemnaker, Karir.com, Loker.id, TopKarir, Urbanhire, EKRUT, Tech in Asia Jobs, Glassdoor, HiredToday, Toploker, dan Redy.
+- Google hanya dipakai sebagai mesin pencari untuk menemukan halaman publik dari platform-platform tersebut; Bing dan Brave tidak dipakai.
 
 Tidak ada crawler yang secara jujur dapat menjamin 100% internet, terutama konten yang login-only, aplikasi mobile-only, private group, atau halaman yang melarang crawler.
 
