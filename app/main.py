@@ -60,7 +60,7 @@ def main() -> None:
         try:
             result = analyze_job(job, cv_text)
             score = int(result.get('fit_score', 0) or 0)
-            status = 'READY' if score >= MIN_FIT_SCORE else 'REJECTED_FIT'
+            status = 'READY' if score >= MIN_FIT_SCORE and job.get('recipient_email') else ('READY_NO_GMAIL' if score >= MIN_FIT_SCORE else 'REJECTED_FIT')
             row = {
                 **job,
                 'fit_score': score,
