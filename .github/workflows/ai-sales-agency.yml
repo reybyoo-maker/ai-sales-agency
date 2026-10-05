@@ -36,7 +36,10 @@ jobs:
           LOCATION_QUERY: Bandung
           MAX_AGE_DAYS: '14'
           ALLOW_UNKNOWN_DATE: 'false'
-          SEARCH_RESULTS_PER_QUERY: '25'
+          SEARCH_RESULTS_PER_QUERY: '15'
+          SEARCH_BACKENDS: 'bing,brave'
+          SEARCH_DELAY_SECONDS: '2'
+          SEARCH_RETRY_DELAY_SECONDS: '6'
           MAX_DISCOVERED_PER_RUN: '300'
           MAX_AI_PER_RUN: '60'
           CV_PDF_BASE64: ${{ secrets.CV_PDF_BASE64 }}
