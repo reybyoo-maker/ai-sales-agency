@@ -4,7 +4,7 @@ import csv
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from .config import CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, MIN_FIT_SCORE, TIMEZONE
+from .config import AI_PROJECT_NOTE, CANDIDATE_HEADLINE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, TIMEZONE
 from .discovery import search_once
 from .job_agent import analyze_job, load_cv_text
 from .sheets import append_job, get_profile, get_ws, records
@@ -60,12 +60,13 @@ def main() -> None:
 
         try:
             result = analyze_job(job, cv_text, profile)
-            score = int(result.get('fit_score', 0) or 0)
-            status = 'READY' if score >= MIN_FIT_SCORE and job.get('recipient_email') else ('READY_NO_GMAIL' if score >= MIN_FIT_SCORE else 'REJECTED_FIT')
+                status = 'SIAP_KIRIM' if job.get('recipient_email') else 'WATCHLIST'
             row = {
                 **job,
-                'fit_score': score,
-                'fit_reason': str(result.get('fit_reason', '')).strip(),
+                'candidate_headline': profile.get('headline', ''),
+                'ai_project_note': profile.get('ai_project', AI_PROJECT_NOTE),
+                'prospect_score': job.get('prospect_score', 0),
+                'score_reason': job.get('score_reason', ''),
                 'subject': str(result.get('subject', '')).strip(),
                 'body': str(result.get('body', '')).strip(),
                 'status': status,
@@ -88,7 +89,7 @@ def main() -> None:
 
     save_rows(rows)
     print(f'QUEUED={added}')
-    print('NO MASS AUTO-SEND: review READY rows in Google Sheets before sending.')
+    print('DISCOVERY ONLY: rows with Gmail are SIAP_KIRIM; set status to KIRIM in Google Sheets to send at the next peak window.')
     print('========================================')
 
 if __name__ == '__main__':
