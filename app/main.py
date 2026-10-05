@@ -72,8 +72,14 @@ def main() -> None:
         return
 
     # Draft new and previously undrafted rows; discovery is never blocked by CV errors.
-    candidates = [r for r in rows if r.get('recipient_email') or r.get('company_tier') == 'famous']
-    candidates = [r for r in candidates if str(r.get('subject', '')).strip() == ''][:MAX_AI_PER_RUN]
+    # Google Sheets is the source of truth for AI drafting. The local CSV
+    # may contain stale rows from earlier runs that were removed or replaced.
+    current_sheet_rows = records(ws)
+    candidates = [
+        r for r in current_sheet_rows
+        if (r.get('recipient_email') or r.get('company_tier') == 'famous')
+        and not str(r.get('subject', '')).strip()
+    ][:MAX_AI_PER_RUN]
 
     drafted = 0
     for job in candidates:
