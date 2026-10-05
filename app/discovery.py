@@ -61,6 +61,43 @@ BLOCKED_DOMAINS = {
 }
 
 
+# ============================================================
+# EMAIL PLATFORM YANG TIDAK BOLEH MASUK
+# ============================================================
+
+BLOCKED_EMAIL_DOMAINS = {
+    "onlinejobs.ph",
+    "trustpilot.com",
+    "upwork.com",
+    "freelancer.com",
+    "guru.com",
+    "facebook.com",
+    "instagram.com",
+    "linkedin.com",
+    "youtube.com",
+    "tiktok.com",
+    "google.com",
+    "gmail.com",
+    "yahoo.com",
+    "hotmail.com",
+    "outlook.com",
+}
+
+
+BLOCKED_EMAIL_PREFIXES = (
+    "support@",
+    "noreply@",
+    "no-reply@",
+    "donotreply@",
+    "do-not-reply@",
+    "info@onlinejobs.ph",
+)
+
+
+# ============================================================
+# FILTER JUDUL
+# ============================================================
+
 BAD_TITLES = (
     "directory",
     "direktori",
@@ -73,6 +110,10 @@ BAD_TITLES = (
     "rekomendasi",
 )
 
+
+# ============================================================
+# FILTER PATH
+# ============================================================
 
 BAD_PATHS = (
     "/directory",
@@ -122,21 +163,73 @@ def is_blocked(url: str) -> bool:
     )
 
 
+def is_blocked_email(email: str) -> bool:
+    if not email:
+        return True
+
+    email = clean_email(email).lower()
+
+    if "@" not in email:
+        return True
+
+    local_part, email_domain = email.rsplit("@", 1)
+
+    if not local_part or not email_domain:
+        return True
+
+    if email_domain in BLOCKED_EMAIL_DOMAINS:
+        return True
+
+    if any(
+        email.startswith(prefix)
+        for prefix in BLOCKED_EMAIL_PREFIXES
+    ):
+        return True
+
+    return False
+
+
 def extract_email(text: str) -> str:
     if not text:
         return ""
 
-    match = re.search(
+    matches = re.findall(
         r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
         text,
     )
 
-    if not match:
+    for match in matches:
+        email = clean_email(match)
+
+        if not email:
+            continue
+
+        if is_blocked_email(email):
+            continue
+
+        return email
+
+    return ""
+
+
+def extract_email_from_list(emails) -> str:
+    if not emails:
         return ""
 
-    return clean_email(
-        match.group(0)
-    )
+    for raw_email in emails:
+        email = clean_email(
+            str(raw_email or "")
+        )
+
+        if not email:
+            continue
+
+        if is_blocked_email(email):
+            continue
+
+        return email
+
+    return ""
 
 
 def extract_phone(text: str) -> str:
@@ -259,7 +352,8 @@ def discover(limit: int = 30) -> list[dict]:
         return []
 
     # Rotasi query setiap 30 menit supaya
-    # workflow otomatis tidak terus mencari query sama.
+    # workflow otomatis tidak terus mencari
+    # query yang sama.
     window = int(
         time.time() // 1800
     )
@@ -382,13 +476,14 @@ def discover(limit: int = 30) -> list[dict]:
                     query,
                 )
 
-                # Untuk tahap pertama kita simpan
-                # hanya intent yang cukup kuat.
+                # Hanya simpan intent yang cukup kuat.
                 if score < 65:
                     continue
 
-                # Ambil halaman untuk mencari
-                # email bisnis publik bila ada.
+                # ====================================================
+                # CARI EMAIL DARI SNIPPET
+                # ====================================================
+
                 email = extract_email(
                     snippet
                 )
@@ -399,6 +494,10 @@ def discover(limit: int = 30) -> list[dict]:
 
                 website_title = title
                 website_text = ""
+
+                # ====================================================
+                # BUKA HALAMAN
+                # ====================================================
 
                 try:
 
@@ -423,6 +522,7 @@ def discover(limit: int = 30) -> list[dict]:
                             )
                         )[:5000]
 
+                        # Cari email dari isi halaman.
                         if not email:
 
                             emails = (
@@ -432,9 +532,11 @@ def discover(limit: int = 30) -> list[dict]:
                                 or []
                             )
 
-                            if emails:
-                                email = emails[0]
+                            email = extract_email_from_list(
+                                emails
+                            )
 
+                        # Cari phone dari isi halaman.
                         if not phone:
 
                             phones = (
@@ -445,7 +547,19 @@ def discover(limit: int = 30) -> list[dict]:
                             )
 
                             if phones:
-                                phone = phones[0]
+
+                                for raw_phone in phones:
+
+                                    candidate_phone = clean_phone(
+                                        str(
+                                            raw_phone
+                                            or ""
+                                        )
+                                    )
+
+                                    if candidate_phone:
+                                        phone = candidate_phone
+                                        break
 
                 except Exception as exc:
 
@@ -455,28 +569,47 @@ def discover(limit: int = 30) -> list[dict]:
                         f"{type(exc).__name__}: {exc}"
                     )
 
+                # ====================================================
+                # FINAL CLEANING
+                # ====================================================
+
                 email = clean_email(
                     email
                 )
+
+                # Jangan masukkan email platform.
+                if is_blocked_email(email):
+                    email = ""
 
                 phone = clean_phone(
                     phone
                 )
 
-                # Untuk intent source yang merupakan
-                # job marketplace, jangan menganggap
-                # judul job sebagai nama perusahaan.
-                #
-                # Jika website/title belum menunjukkan
-                # nama perusahaan, kita simpan title
-                # sebagai identifier sementara.
+                # ====================================================
+                # BUSINESS NAME
+                # ====================================================
+
                 business_name = (
                     website_title
                     or title
                     or "Unknown Buyer"
                 )
 
-                item = {
+                # ====================================================
+                # STATUS
+                # ====================================================
+
+                outreach_status = (
+                    "NEW"
+                    if email
+                    else "NO_EMAIL"
+                )
+
+                # ====================================================
+                # PROSPECT OBJECT
+                # ====================================================
+
+                prospect = {
                     "business_name": business_name,
                     "niche": "B2B Lead Generation",
                     "city": "",
@@ -487,9 +620,6 @@ def discover(limit: int = 30) -> list[dict]:
                     "phone": phone,
                     "source_url": href,
 
-                    # Field intent tetap dikembalikan
-                    # walaupun sementara Sheet lama
-                    # belum punya kolom terpisah.
                     "intent_type": "B2B Lead Generation",
                     "intent_source": domain(href),
                     "intent_url": href,
@@ -503,15 +633,15 @@ def discover(limit: int = 30) -> list[dict]:
 
                     "audit_score": "",
                     "audit_summary": "",
-                    "outreach_status": (
-                        "NEW"
-                        if email
-                        else "NO_EMAIL"
-                    ),
+
+                    "outreach_status": outreach_status,
                     "outreach_at": "",
+
                     "wa_link": "",
+
                     "message_subject": "",
                     "message_body": "",
+
                     "email_opt_in": "",
                     "opt_out": "",
 
@@ -524,16 +654,21 @@ def discover(limit: int = 30) -> list[dict]:
                     ),
                 }
 
+                # ====================================================
+                # DEDUPLICATION
+                # ====================================================
+
                 fp = fingerprint(
-                    item
+                    prospect
                 )
 
                 if fp in seen:
                     continue
 
                 seen.add(fp)
+
                 results_out.append(
-                    item
+                    prospect
                 )
 
                 print(
@@ -543,25 +678,38 @@ def discover(limit: int = 30) -> list[dict]:
                     f"email={email or 'NO EMAIL'}"
                 )
 
+                # ====================================================
+                # STOP KALAU TARGET TERCAPAI
+                # ====================================================
+
                 if (
                     len(results_out)
                     >= limit
                 ):
+
                     print(
                         f"\nIntent target reached: {limit}"
                     )
+
                     return results_out
+
+    # ============================================================
+    # FINISHED
+    # ============================================================
 
     print(
         "\n========================================"
     )
+
     print(
         "INTENT DISCOVERY FINISHED"
     )
+
     print(
         f"Valid intent prospects: "
         f"{len(results_out)}"
     )
+
     print(
         "========================================"
     )
