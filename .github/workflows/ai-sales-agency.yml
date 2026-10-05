@@ -36,11 +36,12 @@ jobs:
           LOCATION_QUERY: Bandung
           MAX_AGE_DAYS: '14'
           ALLOW_UNKNOWN_DATE: 'false'
-          SEARCH_RESULTS_PER_QUERY: '10'
-          SEARCH_BACKENDS: 'bing,brave'
+          SEARCH_RESULTS_PER_QUERY: '8'
+          SEARCH_BACKENDS: 'bing,brave,google'
           SEARCH_DELAY_SECONDS: '1.5'
-          SEARCH_RETRY_DELAY_SECONDS: '6'
+          SEARCH_RETRY_DELAY_SECONDS: '5'
           FLYER_MAX_IMAGES: '6'
+          FLYER_IMAGE_SEARCH: 'true'
           MAX_DISCOVERED_PER_RUN: '300'
           MAX_AI_PER_RUN: '60'
           CV_PDF_BASE64: ${{ secrets.CV_PDF_BASE64 }}
@@ -52,7 +53,7 @@ jobs:
           CV_PDF_BASE64_6: ${{ secrets.CV_PDF_BASE64_6 }}
           CV_PDF_BASE64_7: ${{ secrets.CV_PDF_BASE64_7 }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: 'gemini-3.1-flash-lite'
+          GEMINI_MODEL: 'gemini-3.5-flash-lite'
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           SHEET_TAB: 'Job Applications'
