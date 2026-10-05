@@ -15,9 +15,9 @@ SCOPES = [
 HEADERS = [
     'job_id', 'found_at', 'published_date', 'deadline_date', 'age_days',
     'job_title', 'company', 'company_tier', 'category', 'work_mode', 'location',
-    'source_url', 'source_domain', 'application_method', 'recipient_email',
+    'source_url', 'flyer_image_urls', 'source_domain', 'application_method', 'recipient_email',
     'prospect_score', 'score_reason', 'candidate_headline', 'ai_project_note',
-    'subject', 'body', 'status', 'sent_at', 'send_error', 'notes',
+    'subject', 'body', 'flyer_summary', 'status', 'sent_at', 'send_error', 'notes',
 ]
 
 PROFILE_HEADERS = ['key', 'value']
