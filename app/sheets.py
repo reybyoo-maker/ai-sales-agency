@@ -93,6 +93,13 @@ def append_job(ws, job: dict[str, Any]) -> None:
     headers = [str(x).strip() for x in ws.row_values(1)]
     ws.append_row([job.get(h, '') for h in headers], value_input_option='USER_ENTERED')
 
+def append_jobs(ws, jobs: list[dict[str, Any]]) -> None:
+    if not jobs:
+        return
+    headers = [str(x).strip() for x in ws.row_values(1)]
+    values = [[job.get(h, '') for h in headers] for job in jobs]
+    ws.append_rows(values, value_input_option='USER_ENTERED')
+
 def update_row_by_job_id(ws, job_id: str, **fields: Any) -> None:
     values = ws.get_all_values()
     if not values:
@@ -104,8 +111,25 @@ def update_row_by_job_id(ws, job_id: str, **fields: Any) -> None:
         raise RuntimeError('Kolom job_id tidak ditemukan')
     for row_num, row in enumerate(values[1:], start=2):
         if len(row) > idx and str(row[idx]).strip() == job_id:
+            updates = []
             for key, value in fields.items():
-                if key in headers:
-                    ws.update_cell(row_num, headers.index(key) + 1, value)
+                if key not in headers:
+                    continue
+                col_num = headers.index(key) + 1
+                # One range per field, submitted in a single Sheets API batch request.
+                updates.append({
+                    "range": f"{gspread.utils.rowcol_to_a1(row_num, col_num)}",
+                    "values": [[value]],
+                })
+            if updates:
+                for attempt in range(3):
+                    try:
+                        ws.batch_update(updates)
+                        break
+                    except gspread.exceptions.APIError as exc:
+                        if "429" not in str(exc) or attempt == 2:
+                            raise
+                        import time
+                        time.sleep(2 * (attempt + 1))
             return
     raise RuntimeError(f'job_id tidak ditemukan: {job_id}')
