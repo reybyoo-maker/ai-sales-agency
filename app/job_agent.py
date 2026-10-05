@@ -9,7 +9,7 @@ from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
-from .config import CV_PDF_BASE64, CV_PDF_PATH, GEMINI_API_KEY, GEMINI_MODEL, MIN_FIT_SCORE
+from .config import AI_PROJECT_NOTE, CANDIDATE_HEADLINE, CANDIDATE_WA, CV_PDF_BASE64, CV_PDF_PATH, GEMINI_API_KEY, GEMINI_MODEL, MIN_FIT_SCORE
 
 def load_cv_text() -> str:
     if CV_PDF_BASE64:
@@ -56,9 +56,9 @@ Aturan:
 5. Buat email lamaran singkat, natural, profesional, dan spesifik ke posisi.
 6. Jangan menyebut sistem otomatis atau AI.
 7. Subjek: Lamaran [Nama Posisi] - [Nama Kandidat] | WA 6287813871926
-8. Body harus menyebut CV terlampir dan WhatsApp 6287813871926.
+8. Body harus menyebut CV terlampir dan WhatsApp 6287813871926. Tambahkan satu kalimat tentang project Agent Agency AI hanya bila relevan; jangan membuat email terasa seperti promosi.
 9. Jangan menjamin diterima atau membuat klaim yang tidak ada di CV.
-10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.
+10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.\n11. Jangan mengubah headline kandidat menjadi jabatan yang tidak ada di CV.
 
 Return JSON only.
 """.strip()
