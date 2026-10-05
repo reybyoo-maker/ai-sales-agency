@@ -49,6 +49,7 @@ def main() -> None:
             'ai_project_note': profile.get('ai_project', AI_PROJECT_NOTE),
             'subject': '',
             'body': '',
+            'flyer_summary': '',
             'status': 'BARU',
             'sent_at': '',
             'send_error': '',
