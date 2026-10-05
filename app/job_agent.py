@@ -42,6 +42,11 @@ def analyze_job(job: dict[str, Any], cv_text: str) -> dict[str, Any]:
     prompt = f"""
 Kamu adalah career application assistant.
 
+Profil kandidat:
+Headline: {CANDIDATE_HEADLINE}
+WhatsApp: {CANDIDATE_WA}
+Project yang sedang dikembangkan: {AI_PROJECT_NOTE}
+
 CV kandidat:
 {cv_text}
 
@@ -54,11 +59,13 @@ Aturan:
 3. Freelance, kontrak, hybrid, remote, part-time, internship, dan full-time boleh.
 4. Jangan mengarang pengalaman, skill, nama HR, gaji, atau fakta perusahaan.
 5. Buat email lamaran singkat, natural, profesional, dan spesifik ke posisi.
-6. Jangan menyebut sistem otomatis atau AI.
-7. Subjek: Lamaran [Nama Posisi] - [Nama Kandidat] | WA 6287813871926
+6. Jangan menyebut sistem otomatis. Project Agent Agency AI boleh disebut secara natural bila relevan dengan posisi, sebagai project yang sedang dikembangkan untuk membantu membuat pekerjaan lebih mudah dan terstruktur. Jangan membuat klaim teknis yang tidak ada di CV.
+7. Subjek: Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA 6287813871926
 8. Body harus menyebut CV terlampir dan WhatsApp 6287813871926. Tambahkan satu kalimat tentang project Agent Agency AI hanya bila relevan; jangan membuat email terasa seperti promosi.
 9. Jangan menjamin diterima atau membuat klaim yang tidak ada di CV.
-10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.\n11. Jangan mengubah headline kandidat menjadi jabatan yang tidak ada di CV.
+10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.
+11. Jangan mengubah headline kandidat menjadi jabatan yang tidak ada di CV.
+12. Project Agent Agency AI hanya boleh dipakai sebagai tambahan singkat, bukan sebagai pengalaman kerja fiktif.
 
 Return JSON only.
 """.strip()
