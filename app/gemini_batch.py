@@ -7,82 +7,73 @@ from typing import Any
 from google import genai
 from google.genai import types
 
-from .config import MODEL, PORTFOLIO_URL
-
-_CLIENT: genai.Client | None = None
+from .config import (
+    MODEL,
+    OFFER_NAME,
+    SAMPLE_LEADS,
+    STARTER_PRICE,
+    TARGET_COUNTRY,
+)
 
 
 SYSTEM = f"""
-Kamu adalah sales scout untuk agency landing page Indonesia.
+Kamu adalah AI sales researcher untuk jasa B2B Lead Database.
 
-Tugasmu:
-1. Menilai apakah data prospect adalah bisnis individual.
-2. Menentukan kualitas prospect.
-3. Membuat email pembuka yang jujur, relevan, natural, dan singkat.
+PRODUK YANG DIJUAL:
+{OFFER_NAME}
 
-Aturan penting:
-- Jangan mengaku sebagai pemilik bisnis.
-- Jangan berpura-pura prospect sudah tertarik.
-- Jangan membuat fakta yang tidak ada pada data.
+PENAWARAN:
+- Sample gratis: {SAMPLE_LEADS} lead
+- Paket awal: Rp{STARTER_PRICE}
+- Target negara utama: {TARGET_COUNTRY}
+
+TUGAS UTAMA:
+Menganalisis calon buyer yang ditemukan melalui intent discovery
+dan menentukan apakah mereka kemungkinan membutuhkan jasa B2B
+lead research, lead generation, email list building,
+data enrichment, prospect research, atau appointment-setting support.
+
+Kamu BUKAN lagi menjual landing page.
+
+Jangan membahas jasa landing page kecuali informasi tersebut
+secara eksplisit ada dalam data dan benar-benar relevan.
+
+ATURAN KEJUJURAN:
+- Jangan mengarang nama orang.
+- Jangan mengarang jabatan.
+- Jangan mengarang nama perusahaan.
+- Jangan mengarang budget.
+- Jangan mengarang jumlah karyawan.
+- Jangan mengarang jumlah customer.
+- Jangan mengarang layanan.
+- Jangan mengarang email.
+- Jangan mengarang fakta dari website.
+- Jangan mengaku sebagai bagian dari perusahaan prospect.
 - Jangan menjanjikan hasil pasti.
-- Jangan menyebut AI.
 - Jangan menggunakan fake urgency.
 - Jangan menggunakan fake scarcity.
-- Jangan membuat testimonial palsu.
+- Jangan menggunakan testimonial palsu.
+- Jangan menyebut AI kepada prospect.
 
-Portfolio:
-{PORTFOLIO_URL}
+PRINSIP OUTREACH:
+- Personal.
+- Singkat.
+- Profesional.
+- Tidak memaksa.
+- Berdasarkan intent yang benar-benar ditemukan.
+- Fokus pada kebutuhan prospect.
+- Tawarkan sample kecil terlebih dahulu.
+- CTA utama: meminta izin mengirim sample.
 """.strip()
 
 
-SCHEMA = {
-    "type": "object",
-    "properties": {
-        "score": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 100,
-        },
-        "fit": {
-            "type": "string",
-            "enum": [
-                "business_lead",
-                "not_a_business_lead",
-            ],
-        },
-        "observed_gaps": {
-            "type": "array",
-            "items": {
-                "type": "string",
-            },
-            "maxItems": 3,
-        },
-        "contact_angle": {
-            "type": "string",
-        },
-        "subject": {
-            "type": "string",
-        },
-        "body": {
-            "type": "string",
-        },
-    },
-    "required": [
-        "score",
-        "fit",
-        "observed_gaps",
-        "contact_angle",
-        "subject",
-        "body",
-    ],
-}
+_CLIENT: genai.Client | None = None
 
 
 def client() -> genai.Client:
     global _CLIENT
 
     if _CLIENT is None:
-
         key = os.getenv(
             "GEMINI_API_KEY",
             "",
@@ -104,108 +95,238 @@ def make_prompt(
     prospect: dict[str, Any],
 ) -> str:
 
-    return f"""
-Analisis satu prospect berikut.
+    evidence = {
+        "business_name": prospect.get(
+            "business_name",
+            "",
+        ),
+        "niche": prospect.get(
+            "niche",
+            "",
+        ),
+        "city": prospect.get(
+            "city",
+            "",
+        ),
+        "province": prospect.get(
+            "province",
+            "",
+        ),
+        "website": prospect.get(
+            "website",
+            "",
+        ),
+        "email": prospect.get(
+            "email",
+            "",
+        ),
+        "website_title": prospect.get(
+            "website_title",
+            "",
+        ),
+        "website_text": prospect.get(
+            "website_text",
+            "",
+        )[:6000],
 
-DATA PROSPECT:
+        "intent_type": prospect.get(
+            "intent_type",
+            "",
+        ),
+        "intent_source": prospect.get(
+            "intent_source",
+            "",
+        ),
+        "intent_url": prospect.get(
+            "intent_url",
+            "",
+        ),
+        "intent_title": prospect.get(
+            "intent_title",
+            "",
+        ),
+        "intent_date": prospect.get(
+            "intent_date",
+            "",
+        ),
+        "intent_budget": prospect.get(
+            "intent_budget",
+            "",
+        ),
+        "intent_score": prospect.get(
+            "intent_score",
+            "",
+        ),
+
+        "notes": prospect.get(
+            "notes",
+            "",
+        )[:1500],
+    }
+
+    return f"""
+Analisis calon buyer berikut.
+
+DATA:
 {json.dumps(
-    prospect,
+    evidence,
     ensure_ascii=False,
 )}
 
-ATURAN PENILAIAN:
+TUJUAN:
+Tentukan apakah prospect ini merupakan calon pembeli yang
+masuk akal untuk jasa B2B Lead Database.
 
-1. Jika data merupakan:
+==================================================
+PENILAIAN
+==================================================
+
+Score 90-100:
+Intent sangat kuat.
+Contohnya secara eksplisit sedang mencari:
+- B2B leads
+- lead generation
+- email list building
+- prospect research
+- data enrichment
+- lead researcher
+- sales research
+- appointment setting
+
+Score 75-89:
+Sangat relevan tetapi intent tidak sekuat kategori di atas.
+
+Score 50-74:
+Mungkin relevan tetapi bukti kebutuhan lemah.
+
+Score di bawah 50:
+Jangan diprioritaskan.
+
+Jika sumber ternyata:
 - direktori
 - aggregator
-- portal
-- marketplace
 - artikel
-- halaman review
-- listing umum
-- website lowongan kerja
-- halaman yang bukan bisnis individual
-
+- berita
+- marketplace
+- review page
+- halaman generik
+- halaman yang bukan perusahaan/client
 maka:
 
 fit = "not_a_business_lead"
 
 dan score maksimal 20.
 
-2. Jika merupakan bisnis individual:
-gunakan hanya informasi yang benar-benar
-terdapat pada DATA PROSPECT.
+==================================================
+ANALISIS INTENT
+==================================================
 
-3. Jangan mengarang:
-- nama pemilik
-- nama contact person
-- alamat
-- followers
-- promo
-- layanan yang tidak tercantum
-- omzet
-- statistik
-- testimonial
-- jumlah pelanggan
-- pencapaian bisnis.
+Perhatikan:
 
-4. Buat email pembuka yang:
-- natural
+1. Apa sebenarnya kebutuhan yang tertulis?
+2. Apakah kebutuhan tersebut cocok dengan produk B2B Lead Database?
+3. Apakah sumbernya terlihat seperti job/request nyata?
+4. Apakah ada budget?
+5. Apakah ada tanggal/posting yang masuk akal?
+6. Apakah ada informasi perusahaan?
+7. Apakah ada website resmi?
+8. Apakah email yang tersedia terlihat sebagai email bisnis?
+
+Jangan menebak jika informasi tidak tersedia.
+
+==================================================
+EMAIL
+==================================================
+
+Buat email cold outreach yang berdasarkan intent.
+
+Jangan pura-pura tahu nama owner jika nama owner tidak tersedia.
+
+Kalau tidak ada nama orang, gunakan:
+
+"Halo Tim [nama perusahaan],"
+
+atau sapaan umum yang natural.
+
+Email harus:
+
+- sekitar 500-900 karakter
+- bahasa Indonesia
 - profesional
-- singkat
-- relevan dengan niche
-- tidak terlalu memuji
-- tidak terdengar seperti spam massal
-- tidak mengklaim hasil pasti.
+- natural
+- tidak terlalu formal
+- tidak bertele-tele
+- tidak memakai emoji berlebihan
+- tidak membahas landing page
+- tidak menyebut "AI"
+- tidak menjanjikan hasil
+- tidak memaksa
 
-5. Tujuan email:
-memperkenalkan jasa landing page
-dan membuka kesempatan berdiskusi.
+EMAIL HARUS MENYEBUTKAN KEBUTUHAN YANG TERLIHAT
+DARI INTENT BILA MEMANG ADA.
 
-6. Jangan menggunakan kalimat:
-"saya tertarik dengan layanan Anda"
-kecuali memang didukung oleh data.
+Contoh angle:
 
-7. Jangan mengatakan:
-- website Anda buruk
-- website Anda jelek
-- pasti meningkatkan penjualan
-- dijamin mendapatkan lebih banyak pelanggan
+"Saya melihat tim Anda sedang mencari bantuan untuk B2B lead generation."
 
-8. Gunakan bukti yang ada pada prospect.
+atau:
 
-9. Buat email maksimal sekitar 900 karakter.
+"Saya melihat kebutuhan terkait email list building yang sedang dibuka."
 
-10. Sertakan portfolio SATU kali saja.
+Jangan mengatakan hal tersebut bila tidak terdapat
+bukti dalam data.
 
-Portfolio:
-{PORTFOLIO_URL}
+Kemudian tawarkan:
 
-11. Jangan membuat bagian:
-"Lanjut via WhatsApp"
+"Kalau relevan, saya bisa kirim sample 10 lead terlebih dahulu
+agar tim Anda bisa melihat format dan kualitas datanya."
 
-Aplikasi akan menambahkan link WhatsApp
-secara otomatis.
+CTA utama:
 
-12. Jangan menulis nomor WhatsApp.
+"Kalau berkenan, saya kirim sample-nya."
 
-13. Sertakan kalimat berikut:
+Tambahkan:
 
-"Kalau tidak relevan, cukup balas STOP dan saya tidak akan menghubungi lagi."
+"Kalau tidak relevan, balas STOP dan saya tidak akan
+menghubungi lagi."
 
-14. Jangan menyebut AI.
+Jangan membuat nomor WhatsApp.
 
-OUTPUT:
-- score
-- fit
-- observed_gaps
-- contact_angle
-- subject
-- body
+Jangan membuat link palsu.
+
+Jangan membuat portfolio palsu.
+
+==================================================
+OUTPUT
+==================================================
+
+Return JSON object dengan field:
+
+score
+fit
+observed_gaps
+contact_angle
+subject
+body
+
+fit hanya boleh:
+- business_lead
+- not_a_business_lead
+
+observed_gaps:
+maksimal 4 item.
+
+subject:
+maksimal 65 karakter.
+
+body:
+maksimal 900 karakter.
+
+Hanya JSON.
 """.strip()
 
 
-def _parse_response(
+def _parse(
     response: Any,
 ) -> dict[str, Any]:
 
@@ -247,14 +368,9 @@ def _parse_response(
             "",
         ).strip()
 
-    try:
-        data = json.loads(text)
-
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            "Response Gemini bukan JSON valid: "
-            f"{text[:500]}"
-        ) from exc
+    data = json.loads(
+        text
+    )
 
     if not isinstance(
         data,
@@ -270,24 +386,71 @@ def _parse_response(
 def generate_prospect(
     prospect: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Analisis satu prospect menggunakan
-    Gemini generate_content().
 
-    Tidak menggunakan Gemini Batch API.
-    """
+    schema = {
+        "type": "object",
+        "properties": {
+            "score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+            },
+            "fit": {
+                "type": "string",
+                "enum": [
+                    "business_lead",
+                    "not_a_business_lead",
+                ],
+            },
+            "observed_gaps": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "maxItems": 4,
+            },
+            "contact_angle": {
+                "type": "string",
+            },
+            "subject": {
+                "type": "string",
+            },
+            "body": {
+                "type": "string",
+            },
+        },
+        "required": [
+            "score",
+            "fit",
+            "observed_gaps",
+            "contact_angle",
+            "subject",
+            "body",
+        ],
+    }
 
     response = client().models.generate_content(
         model=MODEL,
-        contents=make_prompt(prospect),
+        contents=make_prompt(
+            prospect
+        ),
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM,
             response_mime_type="application/json",
-            response_json_schema=SCHEMA,
+            response_json_schema=schema,
             temperature=0.2,
         ),
     )
 
-    return _parse_response(
+    return _parse(
         response
+    )
+
+
+def analyze_prospect(
+    prospect: dict[str, Any],
+) -> dict[str, Any]:
+
+    return generate_prospect(
+        prospect
     )
