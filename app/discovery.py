@@ -42,7 +42,7 @@ INTENT_QUERIES = [
 
 
 # ============================================================
-# JOB PLATFORM
+# JOB PLATFORMS
 # ============================================================
 
 JOB_DOMAINS = {
@@ -75,11 +75,12 @@ BLOCKED_DOMAINS = {
 
     "trustpilot.com",
     "grokipedia.com",
+    "justuseapp.com",
 }
 
 
 # ============================================================
-# EMAIL YANG TIDAK BOLEH DIPAKAI
+# EMAIL DOMAIN YANG TIDAK BOLEH DIPAKAI
 # ============================================================
 
 BLOCKED_EMAIL_DOMAINS = {
@@ -159,21 +160,103 @@ BAD_PATHS = (
 
 
 # ============================================================
-# LIMIT RESOLUTION
+# RESOLUTION LIMIT
 # ============================================================
 
 MAX_COMPANY_RESOLUTION_PER_RUN = 8
 
 
 # ============================================================
-# HELPER
+# BUSINESS NAME HEURISTICS
+# ============================================================
+
+BUSINESS_SUFFIXES = (
+    "llc",
+    "ltd",
+    "inc",
+    "corp",
+    "corporation",
+    "group",
+    "agency",
+    "media",
+    "solutions",
+    "company",
+    "enterprise",
+    "studio",
+    "digital",
+    "marketing",
+    "consulting",
+    "technologies",
+    "technology",
+    "systems",
+    "services",
+    "partners",
+)
+
+
+GENERIC_COMPANY_WORDS = {
+    "company",
+    "corporation",
+    "corp",
+    "inc",
+    "ltd",
+    "llc",
+    "group",
+    "agency",
+    "media",
+    "solutions",
+    "enterprise",
+    "studio",
+    "digital",
+    "marketing",
+    "consulting",
+    "technologies",
+    "technology",
+    "systems",
+    "services",
+    "partners",
+}
+
+
+BAD_COMPANY_WORDS = {
+    "we",
+    "us",
+    "our",
+    "i",
+    "my",
+    "the",
+    "this",
+    "that",
+    "project",
+    "overview",
+    "description",
+    "requirements",
+    "requirement",
+    "about",
+    "looking",
+    "need",
+    "needs",
+    "seeking",
+    "hiring",
+    "job",
+    "role",
+    "position",
+    "company",
+    "client",
+    "employer",
+    "team",
+}
+
+
+# ============================================================
+# BASIC HELPERS
 # ============================================================
 
 def normalize(value: str) -> str:
     return re.sub(
         r"\s+",
         " ",
-        value or "",
+        str(value or ""),
     ).strip()
 
 
@@ -212,6 +295,18 @@ def is_blocked(url: str) -> bool:
         for blocked in BLOCKED_DOMAINS
     )
 
+
+def normalize_token(value: str) -> str:
+    return re.sub(
+        r"[^a-z0-9]",
+        "",
+        str(value or "").lower(),
+    )
+
+
+# ============================================================
+# EMAIL
+# ============================================================
 
 def is_blocked_email(email: str) -> bool:
     email = clean_email(
@@ -290,6 +385,10 @@ def extract_email_from_list(emails) -> str:
     return ""
 
 
+# ============================================================
+# PHONE
+# ============================================================
+
 def extract_phone(text: str) -> str:
     if not text:
         return ""
@@ -326,6 +425,9 @@ def company_name_score(
         "we",
         "we are",
         "we're",
+        "us",
+        "our",
+        "i",
         "company",
         "employer",
         "client",
@@ -333,21 +435,23 @@ def company_name_score(
         "agency",
         "team",
         "job",
-        "upwork",
-        "freelancer",
-        "onlinejobs",
-        "guru",
         "the company",
         "the employer",
+        "project overview",
+        "about us",
+        "company info",
+        "looking for",
+        "looking for someone",
     }
 
     if low in bad_exact:
         return 0
 
-    # Nama yang jelas-jelas berupa kalimat.
+    # Jangan menerima kalimat panjang.
     if len(name) > 70:
         return 0
 
+    # Jangan berakhir dengan punctuation.
     if name.endswith(
         (
             ".",
@@ -358,10 +462,18 @@ def company_name_score(
     ):
         return 0
 
-    # Buang kandidat yang terlalu banyak kata.
     words = name.split()
 
     if len(words) > 8:
+        return 0
+
+    normalized_words = {
+        normalize_token(word)
+        for word in words
+    }
+
+    # Salah satu kata adalah kata terlarang.
+    if normalized_words & BAD_COMPANY_WORDS:
         return 0
 
     score = 50
@@ -369,34 +481,11 @@ def company_name_score(
     if len(name) >= 4:
         score += 10
 
-    if 1 <= len(words) <= 6:
+    if 2 <= len(words) <= 6:
         score += 10
 
-    business_suffixes = (
-        "llc",
-        "ltd",
-        "inc",
-        "corp",
-        "corporation",
-        "group",
-        "agency",
-        "media",
-        "solutions",
-        "company",
-        "enterprise",
-        "studio",
-        "digital",
-        "marketing",
-        "consulting",
-        "technologies",
-        "technology",
-        "systems",
-        "services",
-        "partners",
-    )
-
-    for suffix in business_suffixes:
-
+    # Nama perusahaan dengan suffix jelas lebih dipercaya.
+    for suffix in BUSINESS_SUFFIXES:
         if (
             low.endswith(" " + suffix)
             or low == suffix
@@ -404,7 +493,7 @@ def company_name_score(
             score += 30
             break
 
-    # Nama satu kata yang umum biasanya bukan nama perusahaan.
+    # Satu kata tanpa suffix biasanya terlalu ambigu.
     if len(words) == 1:
         score -= 20
 
@@ -426,24 +515,24 @@ def clean_company_candidate(
     if not name:
         return ""
 
-    # Potong tanda baca di ujung.
     name = name.strip(
         " \t\r\n.,:;|-"
     )
 
-    # Hilangkan awalan yang sering ikut tertangkap.
     prefixes = (
         "about ",
         "company ",
         "company info ",
+        "company information ",
         "employer ",
         "client ",
+        "client company ",
+        "client name ",
     )
 
     low = name.lower()
 
     for prefix in prefixes:
-
         if low.startswith(prefix):
             name = name[
                 len(prefix):
@@ -464,63 +553,65 @@ def extract_company_candidates(
 
     candidates: list[str] = []
 
-    # --------------------------------------------------------
-    # Penting:
-    # TIDAK menggunakan re.IGNORECASE.
-    # Kita sengaja mempertahankan kapitalisasi asli.
-    # --------------------------------------------------------
+    # ========================================================
+    # PRIORITAS 1:
+    # Explicit labels.
+    # ========================================================
 
     patterns = [
 
-        # About Yelico Group
-        r"\bAbout\s+"
-        r"([A-Z][A-Za-z0-9&.'\-]*(?:"
-        r"\s+[A-Z][A-Za-z0-9&.'\-]*"
-        r"){0,5})",
-
-        # Company Info: Yelico Group
-        r"\bCompany(?: Info| Information)?"
+        # Company: Yelico Group
+        r"\bCompany(?:\s+Name| Info| Information)?"
         r"\s*[:\-]\s*"
-        r"([A-Z][A-Za-z0-9&.'\-]*(?:"
-        r"\s+[A-Z][A-Za-z0-9&.'\-]*"
-        r"){0,5})",
+        r"([A-Z][A-Za-z0-9&.'\-]*"
+        r"(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,7})",
 
         # Employer: Yelico Group
         r"\bEmployer"
         r"\s*[:\-]\s*"
-        r"([A-Z][A-Za-z0-9&.'\-]*(?:"
-        r"\s+[A-Z][A-Za-z0-9&.'\-]*"
-        r"){0,5})",
+        r"([A-Z][A-Za-z0-9&.'\-]*"
+        r"(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,7})",
 
-        # Company: Yelico Group
-        r"\bCompany"
+        # Client: Yelico Group
+        r"\bClient(?:\s+Company|\s+Name)?"
         r"\s*[:\-]\s*"
-        r"([A-Z][A-Za-z0-9&.'\-]*(?:"
-        r"\s+[A-Z][A-Za-z0-9&.'\-]*"
-        r"){0,5})",
+        r"([A-Z][A-Za-z0-9&.'\-]*"
+        r"(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,7})",
+
+        # About Yelico Group
+        r"\bAbout\s+"
+        r"((?!Us\b|We\b|Our\b)"
+        r"[A-Z][A-Za-z0-9&.'\-]*"
+        r"(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,5})",
 
         # Yelico Group Pay:
-        r"\b([A-Z][A-Za-z0-9&.'\-]*(?:"
-        r"\s+[A-Z][A-Za-z0-9&.'\-]*"
-        r"){0,7})"
+        r"\b([A-Z][A-Za-z0-9&.'\-]*"
+        r"(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,7})"
         r"\s+Pay\s*[:\-]",
-
-        # Yelico Group is...
-        r"\b([A-Z][A-Za-z0-9&.'\-]*(?:"
-        r"\s+[A-Z][A-Za-z0-9&.'\-]*"
-        r"){0,5})"
-        r"\s+(?:is|are|provides|offers|operates|builds|creates|serves)\b",
     ]
 
-    for pattern in patterns:
+    # ========================================================
+    # PRIORITAS 2:
+    # Pattern "Company X is..."
+    #
+    # Ini lebih ketat daripada regex lama.
+    # ========================================================
+
+    fallback_patterns = [
+
+        r"\b([A-Z][A-Za-z0-9&.'\-]*"
+        r"(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,5})"
+        r"\s+(?:is|are|provides|offers|operates|"
+        r"builds|creates|serves)\b",
+    ]
+
+    for pattern in patterns + fallback_patterns:
 
         try:
-
             matches = re.findall(
                 pattern,
                 text,
             )
-
         except re.error:
             continue
 
@@ -548,7 +639,10 @@ def extract_company_candidates(
 
             low = name.lower()
 
-            # Jangan pakai frasa generic.
+            # =================================================
+            # Generic phrase rejection.
+            # =================================================
+
             generic_phrases = (
                 "identify business owners",
                 "identify business",
@@ -572,8 +666,29 @@ def extract_company_candidates(
             ):
                 continue
 
+            # =================================================
+            # Strong protection against false names.
+            # =================================================
+
+            if low.startswith(
+                (
+                    "we ",
+                    "our ",
+                    "us ",
+                    "i ",
+                    "project ",
+                    "about ",
+                    "looking ",
+                    "need ",
+                    "seeking ",
+                )
+            ):
+                continue
+
             if name not in candidates:
-                candidates.append(name)
+                candidates.append(
+                    name
+                )
 
     candidates.sort(
         key=lambda value: (
@@ -670,13 +785,52 @@ def intent_score(
 
 
 # ============================================================
-# OFFICIAL WEBSITE RESOLUTION
+# WEBSITE RESOLUTION
 # ============================================================
+
+def meaningful_company_tokens(
+    company_name: str,
+) -> list[str]:
+
+    tokens = re.findall(
+        r"[a-z0-9]+",
+        company_name.lower(),
+    )
+
+    meaningful = []
+
+    for token in tokens:
+
+        if len(token) < 4:
+            continue
+
+        if token in GENERIC_COMPANY_WORDS:
+            continue
+
+        meaningful.append(
+            token
+        )
+
+    # Fallback untuk brand satu kata.
+    if not meaningful:
+        meaningful = [
+            token
+            for token in tokens
+            if len(token) >= 4
+        ]
+
+    return list(
+        dict.fromkeys(
+            meaningful
+        )
+    )
+
 
 def candidate_domain_score(
     candidate_url: str,
     company_name: str,
     title: str,
+    body: str = "",
 ) -> int:
 
     if not candidate_url:
@@ -695,33 +849,83 @@ def candidate_domain_score(
         return 0
 
     low_domain = candidate_domain.lower()
-    low_company = company_name.lower()
-    low_title = title.lower()
+
+    company_tokens = (
+        meaningful_company_tokens(
+            company_name
+        )
+    )
+
+    if not company_tokens:
+        return 0
 
     score = 0
+    matched_tokens = 0
 
-    company_words = [
-        word
-        for word in re.findall(
-            r"[a-z0-9]+",
-            low_company,
-        )
-        if len(word) >= 3
-    ]
+    # ========================================================
+    # Domain harus punya hubungan dengan nama perusahaan.
+    # ========================================================
 
-    for word in company_words:
+    for token in company_tokens:
 
-        if word in low_domain:
-            score += 20
+        if token in low_domain:
+            score += 30
+            matched_tokens += 1
+
+    # Tidak ada company token di domain = reject.
+    #
+    # Ini mencegah:
+    # Sales Navigator
+    # -> justuseapp.com
+    #
+    # walaupun URL mengandung /contact.
+    # ========================================================
+
+    if matched_tokens == 0:
+        return 0
+
+    # Lebih dari satu token cocok = sinyal lebih kuat.
+    if matched_tokens >= 2:
+        score += 15
+
+    # ========================================================
+    # Title/body matching sebagai sinyal tambahan.
+    # ========================================================
+
+    text = (
+        f"{title} {body}"
+    ).lower()
+
+    matched_text_tokens = sum(
+        1
+        for token in company_tokens
+        if token in text
+    )
+
+    score += min(
+        matched_text_tokens * 5,
+        15,
+    )
+
+    # ========================================================
+    # Contact/about bukan bukti perusahaan.
+    # Hanya sedikit bonus.
+    # ========================================================
 
     if any(
         token in candidate_url.lower()
         for token in (
-            "contact",
-            "about",
+            "/contact",
+            "/about",
         )
     ):
-        score += 5
+        score += 3
+
+    # ========================================================
+    # Bad title / listing penalty.
+    # ========================================================
+
+    low_title = title.lower()
 
     if any(
         bad in low_title
@@ -733,7 +937,7 @@ def candidate_domain_score(
             "blog",
         )
     ):
-        score -= 20
+        score -= 30
 
     return max(
         0,
@@ -793,8 +997,7 @@ def resolve_company(
                     continue
 
                 for item in (
-                    search_results
-                    or []
+                    search_results or []
                 ):
 
                     href = normalize(
@@ -830,6 +1033,7 @@ def resolve_company(
                         href,
                         company_name,
                         title,
+                        body,
                     )
 
                     if score <= 0:
@@ -879,11 +1083,18 @@ def resolve_company(
                 href
             )
 
-        except Exception:
+        except Exception as exc:
+
+            print(
+                "SNAPSHOT RESOLUTION WARNING: "
+                f"{type(exc).__name__}: {exc}"
+            )
 
             continue
 
-        if not snap.get("ok"):
+        if not snap.get(
+            "ok"
+        ):
             continue
 
         final_url = normalize(
@@ -897,6 +1108,34 @@ def resolve_company(
             final_url
         ):
             continue
+
+        # ====================================================
+        # Re-check final redirected domain.
+        # ====================================================
+
+        final_score = candidate_domain_score(
+            final_url,
+            company_name,
+            normalize(
+                snap.get(
+                    "title",
+                    "",
+                )
+            ),
+            normalize(
+                snap.get(
+                    "text",
+                    "",
+                )
+            ),
+        )
+
+        if final_score <= 0:
+            continue
+
+        # ====================================================
+        # EMAIL
+        # ====================================================
 
         email = extract_email_from_list(
             snap.get(
@@ -914,6 +1153,10 @@ def resolve_company(
                 )
             )
 
+        # ====================================================
+        # PHONE
+        # ====================================================
+
         phone = ""
 
         for raw_phone in (
@@ -926,13 +1169,16 @@ def resolve_company(
 
             phone = clean_phone(
                 str(
-                    raw_phone
-                    or ""
+                    raw_phone or ""
                 )
             )
 
             if phone:
                 break
+
+        # ====================================================
+        # WEBSITE DATA
+        # ====================================================
 
         website_text = normalize(
             snap.get(
@@ -948,6 +1194,10 @@ def resolve_company(
             )
         )
 
+        # ====================================================
+        # ACCEPT WEBSITE
+        # ====================================================
+
         if (
             email
             or phone
@@ -961,10 +1211,13 @@ def resolve_company(
                     "phone": phone,
                     "website_title": website_title,
                     "website_text": website_text,
-                    "source": current_domain,
+                    "source": domain(
+                        final_url
+                    ),
                 }
             )
 
+            # Email adalah hasil terbaik.
             if email:
                 return result
 
@@ -1016,7 +1269,10 @@ def discover(
     if limit <= 0:
         return []
 
-    # Rotasi query setiap 30 menit.
+    # ========================================================
+    # Rotate queries every 30 minutes.
+    # ========================================================
+
     window = int(
         time.time() // 1800
     )
@@ -1061,6 +1317,10 @@ def discover(
 
     company_resolutions = 0
 
+    # ========================================================
+    # SEARCH
+    # ========================================================
+
     with DDGS() as ddgs:
 
         for query_index, query in enumerate(
@@ -1094,8 +1354,7 @@ def discover(
                 continue
 
             for item in (
-                search_results
-                or []
+                search_results or []
             ):
 
                 title = normalize(
@@ -1122,7 +1381,10 @@ def discover(
                 if not href:
                     continue
 
-                # Hanya ambil job/request.
+                # =================================================
+                # HANYA JOB / REQUEST
+                # =================================================
+
                 if not is_job_domain(
                     href
                 ):
@@ -1155,9 +1417,9 @@ def discover(
                 if score < 65:
                     continue
 
-                # ====================================================
+                # =================================================
                 # SNAPSHOT JOB
-                # ====================================================
+                # =================================================
 
                 job_email = extract_email(
                     snippet
@@ -1177,7 +1439,9 @@ def discover(
                         href
                     )
 
-                    if snap.get("ok"):
+                    if snap.get(
+                        "ok"
+                    ):
 
                         website_title = normalize(
                             snap.get(
@@ -1223,7 +1487,11 @@ def discover(
                                 )
 
                                 if candidate_phone:
-                                    job_phone = candidate_phone
+
+                                    job_phone = (
+                                        candidate_phone
+                                    )
+
                                     break
 
                 except Exception as exc:
@@ -1234,18 +1502,18 @@ def discover(
                         f"{type(exc).__name__}: {exc}"
                     )
 
-                # ====================================================
+                # =================================================
                 # FULL JOB TEXT
-                # ====================================================
+                # =================================================
 
                 full_job_text = normalize(
                     f"{snippet} "
                     f"{website_text}"
                 )
 
-                # ====================================================
+                # =================================================
                 # COMPANY CANDIDATE
-                # ====================================================
+                # =================================================
 
                 candidates = extract_company_candidates(
                     full_job_text,
@@ -1263,9 +1531,16 @@ def discover(
                         f"{company_name}"
                     )
 
-                # ====================================================
+                else:
+
+                    print(
+                        "COMPANY CANDIDATE: "
+                        "UNKNOWN"
+                    )
+
+                # =================================================
                 # RESOLVE COMPANY
-                # ====================================================
+                # =================================================
 
                 resolved = {
                     "company_name": company_name,
@@ -1304,37 +1579,64 @@ def discover(
                             f"{type(exc).__name__}: {exc}"
                         )
 
-                    resolved_website = (
+                    resolved_website = normalize(
                         resolved.get(
                             "website",
                             "",
                         )
                     )
 
-                    resolved_email = (
+                    resolved_email = clean_email(
                         resolved.get(
                             "email",
                             "",
                         )
                     )
 
-                    if resolved_website:
+                    print(
+                        "RESOLVED WEBSITE: "
+                        f"{resolved_website or 'NO'}"
+                    )
 
-                        print(
-                            "RESOLVED WEBSITE: "
-                            f"{resolved_website}"
-                        )
+                    print(
+                        "RESOLVED EMAIL: "
+                        f"{resolved_email or 'NO'}"
+                    )
 
-                    if resolved_email:
+                elif company_name:
 
-                        print(
-                            "RESOLVED EMAIL: "
-                            f"{resolved_email}"
-                        )
+                    print(
+                        "RESOLVING COMPANY: "
+                        f"{company_name} | "
+                        "SKIPPED (run limit reached)"
+                    )
 
-                # ====================================================
+                    print(
+                        "RESOLVED WEBSITE: NO"
+                    )
+
+                    print(
+                        "RESOLVED EMAIL: NO"
+                    )
+
+                else:
+
+                    print(
+                        "RESOLVING COMPANY: "
+                        "SKIPPED (no reliable company name)"
+                    )
+
+                    print(
+                        "RESOLVED WEBSITE: NO"
+                    )
+
+                    print(
+                        "RESOLVED EMAIL: NO"
+                    )
+
+                # =================================================
                 # FINAL EMAIL
-                # ====================================================
+                # =================================================
 
                 email = (
                     resolved.get(
@@ -1353,9 +1655,9 @@ def discover(
                 ):
                     email = ""
 
-                # ====================================================
-                # BUSINESS NAME
-                # ====================================================
+                # =================================================
+                # FINAL BUSINESS NAME
+                # =================================================
 
                 final_business_name = (
                     resolved.get(
@@ -1365,8 +1667,6 @@ def discover(
                     or company_name
                 )
 
-                # Kalau belum ada nama perusahaan,
-                # jangan memaksa memakai potongan kalimat.
                 if not final_business_name:
 
                     final_business_name = (
@@ -1395,9 +1695,9 @@ def discover(
                         "Unknown Buyer"
                     )
 
-                # ====================================================
+                # =================================================
                 # FINAL WEBSITE
-                # ====================================================
+                # =================================================
 
                 resolved_website = normalize(
                     resolved.get(
@@ -1406,17 +1706,14 @@ def discover(
                     )
                 )
 
-                # Kalau website resmi tidak ditemukan,
-                # kita simpan URL job sebagai source,
-                # BUKAN menganggapnya website client.
                 final_website = (
                     resolved_website
                     or ""
                 )
 
-                # ====================================================
+                # =================================================
                 # FINAL PHONE
-                # ====================================================
+                # =================================================
 
                 final_phone = clean_phone(
                     resolved.get(
@@ -1426,9 +1723,9 @@ def discover(
                     or job_phone
                 )
 
-                # ====================================================
+                # =================================================
                 # FINAL WEBSITE TEXT
-                # ====================================================
+                # =================================================
 
                 final_website_text = normalize(
                     resolved.get(
@@ -1446,9 +1743,9 @@ def discover(
                     or ""
                 )
 
-                # ====================================================
+                # =================================================
                 # STATUS
-                # ====================================================
+                # =================================================
 
                 outreach_status = (
                     "NEW"
@@ -1456,48 +1753,83 @@ def discover(
                     else "NO_EMAIL"
                 )
 
-                # ====================================================
+                # =================================================
+                # NOTES
+                # =================================================
+
+                notes = (
+                    "INTENT DISCOVERY | "
+                    f"query={query} | "
+                    f"intent_score={score} | "
+                    f"job_title={title} | "
+                    f"company_candidate="
+                    f"{company_name or 'UNKNOWN'} | "
+                    f"resolved_website="
+                    f"{resolved_website or 'NO'} | "
+                    f"resolved_email="
+                    f"{resolved.get('email', '') or 'NO'} | "
+                    f"snippet={snippet[:900]}"
+                )
+
+                # =================================================
                 # PROSPECT
-                # ====================================================
+                # =================================================
 
                 prospect = {
-                    "business_name": final_business_name,
+
+                    "business_name": (
+                        final_business_name
+                    ),
 
                     "niche": (
                         "B2B Lead Generation"
                     ),
 
                     "city": "",
+
                     "province": "",
 
-                    "website": final_website,
+                    "website": (
+                        final_website
+                    ),
 
                     "instagram": "",
 
-                    "email": email,
+                    "email": (
+                        email
+                    ),
 
-                    "phone": final_phone,
+                    "phone": (
+                        final_phone
+                    ),
 
-                    # URL job asli.
-                    "source_url": href,
+                    "source_url": (
+                        href
+                    ),
 
                     "intent_type": (
                         "B2B Lead Generation"
                     ),
 
-                    "intent_source": domain(
+                    "intent_source": (
+                        domain(href)
+                    ),
+
+                    "intent_url": (
                         href
                     ),
 
-                    "intent_url": href,
-
-                    "intent_title": title,
+                    "intent_title": (
+                        title
+                    ),
 
                     "intent_date": "",
 
                     "intent_budget": "",
 
-                    "intent_score": score,
+                    "intent_score": (
+                        score
+                    ),
 
                     "website_title": (
                         final_website_title
@@ -1528,23 +1860,13 @@ def discover(
                     "opt_out": "",
 
                     "notes": (
-                        "INTENT DISCOVERY | "
-                        f"query={query} | "
-                        f"intent_score={score} | "
-                        f"job_title={title} | "
-                        f"company_candidate="
-                        f"{company_name or 'UNKNOWN'} | "
-                        f"resolved_website="
-                        f"{resolved_website or 'NO'} | "
-                        f"resolved_email="
-                        f"{resolved.get('email', '') or 'NO'} | "
-                        f"snippet={snippet[:900]}"
+                        notes
                     ),
                 }
 
-                # ====================================================
+                # =================================================
                 # DEDUP
-                # ====================================================
+                # =================================================
 
                 fp = fingerprint(
                     prospect
