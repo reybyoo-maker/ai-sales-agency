@@ -500,7 +500,7 @@ def extract_phone(
 
 
 # ============================================================
-# DDGS SEARCH WITH FALLBACK BACKENDS
+# DDGS SEARCH
 # ============================================================
 
 def search_web(
@@ -579,6 +579,112 @@ def search_web(
 
 
 # ============================================================
+# INTENT SCORE
+# ============================================================
+
+def intent_score(
+    title: str,
+    snippet: str,
+    query: str,
+) -> int:
+
+    text = (
+        f"{title} "
+        f"{snippet} "
+        f"{query}"
+    ).lower()
+
+    score = 50
+
+    strong_signals = (
+        "we need",
+        "need ",
+        "looking for",
+        "hiring",
+        "hire",
+        "seeking",
+        "required",
+        "requirement",
+        "urgent",
+        "we are looking",
+        "we're looking",
+        "now hiring",
+        "i need",
+        "we want",
+        "we are hiring",
+    )
+
+    service_signals = (
+        "b2b lead",
+        "lead generation",
+        "lead research",
+        "email list",
+        "email list building",
+        "prospect research",
+        "data enrichment",
+        "appointment setting",
+        "lead researcher",
+        "sales research",
+        "outreach",
+        "prospect list",
+        "targeted prospect",
+        "decision-maker",
+        "decision maker",
+        "sales development",
+        "cold calling",
+        "cold caller",
+    )
+
+    if any(
+        signal in text
+        for signal in strong_signals
+    ):
+        score += 20
+
+    matching_services = sum(
+        1
+        for signal in service_signals
+        if signal in text
+    )
+
+    score += min(
+        matching_services * 5,
+        25,
+    )
+
+    if any(
+        source in query.lower()
+        for source in (
+            "upwork.com",
+            "freelancer.com",
+            "guru.com",
+            "onlinejobs.ph",
+        )
+    ):
+        score += 5
+
+    # Listing/category pages are less useful
+    # than a specific job.
+    if any(
+        phrase in title.lower()
+        for phrase in (
+            "freelance jobs",
+            "jobs on upwork",
+            "jobs: work remote",
+        )
+    ):
+        score -= 10
+
+    return max(
+        0,
+        min(
+            score,
+            100,
+        ),
+    )
+
+
+# ============================================================
 # COMPANY NAME SCORE
 # ============================================================
 
@@ -601,7 +707,6 @@ def company_name_score(
     if len(name) > 70:
         return 0
 
-    # Kalimat punctuation biasanya bukan nama company.
     if any(
         char in name
         for char in (
@@ -612,7 +717,7 @@ def company_name_score(
     ):
         return 0
 
-    # Period hanya diperbolehkan untuk suffix bisnis.
+    # Period hanya untuk suffix bisnis.
     if "." in name:
 
         allowed = (
@@ -840,7 +945,7 @@ def extract_company_candidates(
                 )
 
     # --------------------------------------------------------
-    # "LeadOrbix is a new..."
+    # LeadOrbix is a...
     # --------------------------------------------------------
 
     brand_pattern = (
@@ -883,7 +988,7 @@ def extract_company_candidates(
             )
 
     # --------------------------------------------------------
-    # "About Brand"
+    # About Brand
     # --------------------------------------------------------
 
     about_pattern = (
@@ -993,7 +1098,6 @@ def extract_explicit_websites(
 
     found: list[str] = []
 
-    # URL lengkap atau domain biasa.
     url_pattern = re.compile(
         r"(?<![@\w])"
         r"(?:(?:https?://|www\.)?"
@@ -1068,7 +1172,6 @@ def business_name_from_website(
 
     if title:
 
-        # Ambil bagian pertama sebelum separator.
         parts = re.split(
             r"\s+(?:\||–|—|-)\s+",
             title,
@@ -1090,6 +1193,7 @@ def business_name_from_website(
                 "about",
             }
         ):
+
             return first
 
     current_domain = domain(
@@ -1345,7 +1449,7 @@ def candidate_domain_score(
         if token in low_domain
     )
 
-    # Domain harus punya hubungan nyata.
+    # Domain harus punya hubungan dengan company.
     if matched == 0:
         return 0
 
@@ -1353,14 +1457,14 @@ def candidate_domain_score(
         matched * 25
     )
 
-    page_text = (
+    text = (
         f"{title} {body}"
     ).lower()
 
     text_matches = sum(
         1
         for token in tokens
-        if token in page_text
+        if token in text
     )
 
     score += min(
@@ -1525,7 +1629,6 @@ def resolve_company(
         ):
             continue
 
-        # Redirected domain must still match.
         final_score = candidate_domain_score(
             final_url,
             company_name,
@@ -1666,7 +1769,7 @@ def discover(
         return []
 
     # ========================================================
-    # Rotate query selection every 30 minutes.
+    # ROTATE QUERY SET EVERY 30 MINUTES
     # ========================================================
 
     window = int(
@@ -1716,7 +1819,7 @@ def discover(
     company_resolutions = 0
 
     # ========================================================
-    # MAIN SEARCH LOOP
+    # SEARCH
     # ========================================================
 
     with DDGS() as ddgs:
@@ -1878,12 +1981,10 @@ def discover(
                                 or []
                             ):
 
-                                candidate_phone = (
-                                    clean_phone(
-                                        str(
-                                            raw_phone
-                                            or ""
-                                        )
+                                candidate_phone = clean_phone(
+                                    str(
+                                        raw_phone
+                                        or ""
                                     )
                                 )
 
@@ -1913,7 +2014,7 @@ def discover(
                 )
 
                 # =================================================
-                # EXPLICIT WEBSITES
+                # EXPLICIT WEBSITE
                 # =================================================
 
                 explicit_websites = (
@@ -1962,7 +2063,7 @@ def discover(
                     )
 
                 # =================================================
-                # RESOLVED OBJECT
+                # DEFAULT RESOLVED OBJECT
                 # =================================================
 
                 resolved = {
@@ -1977,15 +2078,13 @@ def discover(
 
                 # =================================================
                 # PRIORITY 1:
-                # Explicit website from job text.
+                # EXPLICIT WEBSITE FOUND IN JOB
                 # =================================================
 
                 if explicit_websites:
 
                     selected_explicit = ""
 
-                    # If company already known, prefer the
-                    # explicit domain matching its name.
                     if company_name:
 
                         tokens = (
@@ -2054,7 +2153,7 @@ def discover(
 
                 # =================================================
                 # PRIORITY 2:
-                # Search company.
+                # COMPANY SEARCH
                 # =================================================
 
                 if (
@@ -2113,7 +2212,7 @@ def discover(
                     )
 
                 # =================================================
-                # RESOLUTION LOG
+                # RESOLUTION RESULT
                 # =================================================
 
                 resolved_website = normalize(
@@ -2176,34 +2275,6 @@ def discover(
                         "Unknown Buyer"
                     )
 
-                if (
-                    company_name_score(
-                        final_business_name
-                    )
-                    < 40
-                ):
-
-                    # A domain-derived single-word brand
-                    # is still acceptable here.
-                    if (
-                        resolved_website
-                        and resolved.get(
-                            "company_name"
-                        )
-                    ):
-
-                        final_business_name = (
-                            resolved.get(
-                                "company_name"
-                            )
-                        )
-
-                    else:
-
-                        final_business_name = (
-                            "Unknown Buyer"
-                        )
-
                 # =================================================
                 # FINAL WEBSITE
                 # =================================================
@@ -2226,7 +2297,7 @@ def discover(
                 )
 
                 # =================================================
-                # FINAL WEBSITE TEXT
+                # FINAL WEBSITE DATA
                 # =================================================
 
                 final_website_text = normalize(
@@ -2280,7 +2351,6 @@ def discover(
                 # =================================================
 
                 prospect = {
-
                     "business_name":
                         final_business_name,
 
@@ -2312,7 +2382,9 @@ def discover(
                         "B2B Lead Generation",
 
                     "intent_source":
-                        domain(href),
+                        domain(
+                            href
+                        ),
 
                     "intent_url":
                         href,
@@ -2375,7 +2447,6 @@ def discover(
                 )
 
                 if fp in seen:
-
                     continue
 
                 seen.add(
@@ -2399,7 +2470,7 @@ def discover(
                 )
 
                 # =================================================
-                # TARGET REACHED
+                # LIMIT
                 # =================================================
 
                 if (
