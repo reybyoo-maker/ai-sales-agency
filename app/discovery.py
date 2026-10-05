@@ -108,6 +108,17 @@ def has_application_context(text: str, email: str) -> bool:
     segment = low[max(0, pos - 250):pos + 250] if pos >= 0 else low
     return any(term in segment for term in APPLICATION_TERMS)
 
+
+FAMOUS_COMPANIES = (
+    "astra", "unilever", "loreal", "l'oreal", "danone", "eiger", "telkom",
+    "bca", "bank mandiri", "bri", "bni", "grab", "gojek", "tokopedia",
+    "shopee", "traveloka", "dale carnegie",
+)
+
+def company_tier(name: str, text: str) -> str:
+    hay = f"{name} {text}".lower()
+    return "famous" if any(company in hay for company in FAMOUS_COMPANIES) else "standard"
+
 def extract_company(title: str, text: str) -> str:
     patterns = [
         r"(?:\bat\b|\bdi\b|\bperusahaan\b|\bcompany\b|\bemployer\b)\s*[:\-]?\s*([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z][A-Za-z0-9&.'-]*){0,6})",
@@ -276,6 +287,7 @@ def search_once() -> list[dict]:
                     "job_id": job_id,
                     "job_title": title[:180],
                     "company": extract_company(title, full_text) or "Perusahaan",
+                    "company_tier": company_tier(extract_company(title, full_text), full_text),
                     "category": category,
                     "work_mode": work_mode(full_text),
                     "location": LOCATION_QUERY,
