@@ -6,42 +6,23 @@ import smtplib
 import ssl
 import unicodedata
 from email.message import EmailMessage
-from urllib.parse import quote
-
-from .config import PORTFOLIO_URL
 
 
 def normalize_value(value: str) -> str:
-    """
-    Membersihkan karakter Unicode/spasi tersembunyi.
-    """
     if not value:
         return ""
 
-    value = unicodedata.normalize(
-        "NFKC",
-        str(value),
-    )
-
-    # Menghapus semua whitespace Unicode,
-    # termasuk NBSP (\xa0).
+    value = unicodedata.normalize("NFKC", str(value))
     value = "".join(value.split())
 
     return value.strip()
 
 
 def clean_text(value: str) -> str:
-    """
-    Membersihkan teks biasa tanpa menghapus
-    semua spasi di tengah kalimat.
-    """
     if not value:
         return ""
 
-    value = unicodedata.normalize(
-        "NFKC",
-        str(value),
-    )
+    value = unicodedata.normalize("NFKC", str(value))
 
     value = (
         value
@@ -56,18 +37,9 @@ def clean_text(value: str) -> str:
 
 
 def clean_email_address(value: str) -> str:
-    """
-    Membersihkan alamat email agar ASCII-valid.
-    """
     value = normalize_value(value)
 
-    value = re.sub(
-        r"\s+",
-        "",
-        value,
-    )
-
-    return value
+    return re.sub(r"\s+", "", value)
 
 
 def valid_email_address(value: str) -> bool:
@@ -91,123 +63,21 @@ def valid_email_address(value: str) -> bool:
     return True
 
 
-def wa_link(
-    business_name: str,
-) -> str:
-
-    number = normalize_value(
-        os.getenv(
-            "WA_NUMBER",
-            "",
-        )
-    )
-
-    if not number:
-        return ""
-
-    text = (
-        f"Halo Rey, saya dari {business_name}. "
-        "Saya ingin melihat detail jasa landing page."
-    )
-
-    return (
-        f"https://wa.me/{number}"
-        f"?text={quote(text)}"
-    )
-
-
-def _remove_whatsapp_footer(
-    body: str,
-) -> str:
-
-    marker = "Lanjut via WhatsApp:"
-
-    if marker not in body:
-        return body.strip()
-
-    return body.split(
-        marker,
-        1,
-    )[0].strip()
-
-
-def _remove_duplicate_portfolio(
-    body: str,
-) -> str:
-
-    body = body.strip()
-
-    if PORTFOLIO_URL not in body:
-        return body
-
-    first_position = body.find(
-        PORTFOLIO_URL
-    )
-
-    prefix = body[:first_position]
-
-    suffix = body[
-        first_position
-        + len(PORTFOLIO_URL):
-    ]
-
-    while PORTFOLIO_URL in suffix:
-        suffix = suffix.replace(
-            PORTFOLIO_URL,
-            "",
-        )
-
-    return (
-        prefix
-        + PORTFOLIO_URL
-        + suffix
-    ).strip()
-
-
-def _ensure_portfolio(
-    body: str,
-) -> str:
-
-    body = _remove_duplicate_portfolio(
-        body
-    )
-
-    if PORTFOLIO_URL in body:
-        return body
-
-    return (
-        body
-        + "\n\nPortofolio:\n"
-        + PORTFOLIO_URL
-    )
-
-
 def build_message(
     body: str,
     business_name: str,
 ) -> str:
+    """
+    Membersihkan body email B2B.
+    Tidak menambahkan portfolio atau WhatsApp.
+    """
 
-    body = clean_text(
-        body or ""
-    )
+    body = clean_text(body or "")
 
-    body = _remove_whatsapp_footer(
-        body
-    )
-
-    body = _ensure_portfolio(
-        body
-    )
-
-    link = wa_link(
-        business_name
-    ).strip()
-
-    if link:
+    if not body:
         body = (
-            body.rstrip()
-            + "\n\nLanjut via WhatsApp:\n"
-            + link
+            f"Halo, saya ingin menghubungi tim {business_name} "
+            "terkait kebutuhan lead generation."
         )
 
     return body.strip()
@@ -219,59 +89,37 @@ def send_email(
     body: str,
 ) -> None:
 
-    # Bersihkan email pengirim.
     user = clean_email_address(
-        os.getenv(
-            "GMAIL_ADDRESS",
-            "",
-        )
+        os.getenv("GMAIL_ADDRESS", "")
     )
 
-    # PENTING:
-    # ''.join(split()) menghapus SEMUA whitespace
-    # Unicode, termasuk NBSP (\xa0).
     password = normalize_value(
-        os.getenv(
-            "GMAIL_APP_PASSWORD",
-            "",
-        )
+        os.getenv("GMAIL_APP_PASSWORD", "")
     )
 
-    # Bersihkan email penerima.
-    to_email = clean_email_address(
-        to_email
-    )
+    to_email = clean_email_address(to_email)
 
     if not user or not password:
         raise RuntimeError(
-            "GMAIL_ADDRESS / "
-            "GMAIL_APP_PASSWORD belum diisi"
+            "GMAIL_ADDRESS / GMAIL_APP_PASSWORD belum diisi"
         )
 
     if not valid_email_address(user):
         raise RuntimeError(
-            f"GMAIL_ADDRESS tidak valid: "
-            f"{user!r}"
+            f"GMAIL_ADDRESS tidak valid: {user!r}"
         )
 
     if not valid_email_address(to_email):
         raise RuntimeError(
-            f"Alamat email tujuan tidak valid: "
-            f"{to_email!r}"
+            f"Alamat email tujuan tidak valid: {to_email!r}"
         )
 
-    subject = clean_text(
-        subject
-    )
+    subject = clean_text(subject)
 
     if not subject:
-        subject = (
-            "Ide landing page untuk bisnis Anda"
-        )
+        subject = "B2B Lead Database"
 
-    body = clean_text(
-        body
-    )
+    body = clean_text(body)
 
     msg = EmailMessage()
 
