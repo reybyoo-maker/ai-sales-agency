@@ -27,7 +27,22 @@ CANDIDATE_HEADLINE = os.getenv("CANDIDATE_HEADLINE", "Leader | Mentor | Marketin
 AI_PROJECT_NOTE = os.getenv("AI_PROJECT_NOTE", "Currently developing an Agent Agency AI project to simplify and improve work processes.").strip()
 
 CV_PDF_PATH = Path(os.getenv("CV_PDF_PATH", "assets/CV.pdf")).expanduser()
+
+# GitHub Actions secrets are limited in size. Keep backward compatibility with
+# one CV_PDF_BASE64 secret, while allowing the full CV to be split across parts.
 CV_PDF_BASE64 = os.getenv("CV_PDF_BASE64", "").strip()
+if not CV_PDF_BASE64:
+    _cv_parts = [os.getenv(f"CV_PDF_BASE64_{i}", "").strip() for i in range(1, 8)]
+    if any(_cv_parts):
+        if not all(_cv_parts):
+            missing = [str(i) for i, value in enumerate(_cv_parts, start=1) if not value]
+            raise RuntimeError(
+                "CV_PDF_BASE64 parts tidak lengkap. Secret yang dibutuhkan: "
+                + ", ".join(f"CV_PDF_BASE64_{i}" for i in range(1, 8))
+                + ". Missing: "
+                + ", ".join(f"CV_PDF_BASE64_{i}" for i in missing)
+            )
+        CV_PDF_BASE64 = "".join(_cv_parts)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
