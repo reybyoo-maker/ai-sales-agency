@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import time
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -147,18 +148,88 @@ def extract_company(title: str, text: str) -> str:
     m = re.search(r"\b(?:at|di)\s+(.+)$", title, re.I)
     return normalize(m.group(1))[:100] if m else ""
 
-def fetch_page(url: str) -> str:
+def extract_image_urls(html: str, base_url: str, limit: int = 10) -> list[str]:
+    soup = BeautifulSoup(html[:3_000_000], "html.parser")
+    candidates: list[str] = []
+
+    def add(value: str) -> None:
+        value = normalize(value)
+        if not value or value.startswith("data:"):
+            return
+        absolute = urljoin(base_url, value)
+        if absolute.startswith(("http://", "https://")) and absolute not in candidates:
+            candidates.append(absolute)
+
+    for tag in soup.find_all("meta"):
+        key = str(tag.get("property") or tag.get("name") or "").lower()
+        if key in {"og:image", "og:image:url", "twitter:image", "twitter:image:src"}:
+            add(str(tag.get("content") or ""))
+
+    for script in soup.find_all("script", type="application/ld+json"):
+        raw = script.string or script.get_text()
+        try:
+            data = json.loads(raw)
+        except Exception:
+            continue
+        stack = data if isinstance(data, list) else [data]
+        while stack:
+            item = stack.pop()
+            if isinstance(item, dict):
+                image = item.get("image")
+                if isinstance(image, str):
+                    add(image)
+                elif isinstance(image, list):
+                    for value in image:
+                        if isinstance(value, str):
+                            add(value)
+                        elif isinstance(value, dict) and isinstance(value.get("url"), str):
+                            add(value["url"])
+                elif isinstance(image, dict) and isinstance(image.get("url"), str):
+                    add(image["url"])
+                for value in item.values():
+                    if isinstance(value, (dict, list)):
+                        stack.append(value)
+            elif isinstance(item, list):
+                stack.extend(item)
+
+    for tag in soup.find_all("img"):
+        for attr in ("src", "data-src", "data-lazy-src", "data-original"):
+            add(str(tag.get(attr) or ""))
+        srcset = str(tag.get("srcset") or tag.get("data-srcset") or "")
+        for part in srcset.split(","):
+            add(part.strip().split(" ")[0])
+
+    # Common CSS-style image URLs. These catch some flyer backgrounds.
+    for value in re.findall(r"""(?:url\(['"]?)(https?://[^'")]+)""", html, re.I):
+        add(value)
+
+    return candidates[:limit]
+
+
+def fetch_page_details(url: str) -> tuple[str, list[str]]:
     try:
-        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0 (compatible; BandungJobHunter/3.0)"})
+        r = requests.get(
+            url,
+            timeout=15,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (compatible; BandungJobHunter/4.0; +https://github.com/"
+                    "reybyoo-maker/ai-sales-agency)"
+                )
+            },
+        )
         r.raise_for_status()
-        if "text" not in r.headers.get("content-type", "").lower():
-            return ""
-        soup = BeautifulSoup(r.text[:3_000_000], "html.parser")
+        content_type = r.headers.get("content-type", "").lower()
+        if "text" not in content_type and "html" not in content_type:
+            return "", []
+        html = r.text[:3_000_000]
+        images = extract_image_urls(html, url, limit=10)
+        soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "noscript", "svg"]):
             tag.decompose()
-        return normalize(soup.get_text(" ", strip=True))[:14000]
+        return normalize(soup.get_text(" ", strip=True))[:14000], images
     except requests.RequestException:
-        return ""
+        return "", []
 
 def freshness(text: str, search_date: str, now: datetime) -> tuple[bool, str, str]:
     low = text.lower()
@@ -333,7 +404,7 @@ def search_once() -> list[dict]:
                 if not any(signal in title_and_snippet for signal in vacancy_signals):
                     continue
 
-                page_text = fetch_page(url)
+                page_text, image_urls = fetch_page_details(url)
                 full_text = normalize(f"{search_text} {page_text}")
                 if LOCATION_QUERY.lower() not in full_text.lower():
                     continue
@@ -381,6 +452,7 @@ def search_once() -> list[dict]:
                     "work_mode": work_mode(full_text),
                     "location": LOCATION_QUERY,
                     "source_url": url,
+                    "flyer_image_urls": " | ".join(image_urls),
                     "source_domain": domain(url),
                     "published_date": published,
                     "deadline_date": "",
