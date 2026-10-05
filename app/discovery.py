@@ -244,6 +244,17 @@ BLOCKED_COMPANY_NAMES = {
     "semrush",
     "ahrefs",
     "sales navigator",
+    "here",
+    "there",
+    "node",
+    "angular",
+    "react",
+    "facebook",
+    "google",
+    "linkedin",
+    "microsoft",
+    "chatgpt",
+    "excel",
 }
 
 
@@ -2480,11 +2491,7 @@ def discover(
                 )
 
                 if not final_business_name:
-                    print(
-                        "SKIP UNRESOLVED BUYER: "
-                        f"{title}"
-                    )
-                    continue
+                    final_business_name = "Unknown Buyer"
 
                 if final_business_name.lower().strip() in BLOCKED_COMPANY_NAMES:
                     print(
@@ -2512,11 +2519,10 @@ def discover(
 
                 if not final_website:
                     print(
-                        "SKIP UNRESOLVED COMPANY WEBSITE: "
+                        "UNRESOLVED COMPANY WEBSITE: "
                         f"{final_business_name} | "
                         f"{title}"
                     )
-                    continue
 
                 # =================================================
                 # FINAL PHONE
@@ -2554,11 +2560,21 @@ def discover(
                 # STATUS
                 # =================================================
 
-                outreach_status = (
-                    "NEW"
-                    if email
-                    else "NO_EMAIL"
-                )
+                if (
+                    email
+                    and final_website
+                    and final_business_name != "Unknown Buyer"
+                ):
+                    outreach_status = "NEW"
+                elif (
+                    final_website
+                    and final_business_name != "Unknown Buyer"
+                ):
+                    outreach_status = "NO_EMAIL"
+                elif final_business_name != "Unknown Buyer":
+                    outreach_status = "NO_WEBSITE"
+                else:
+                    outreach_status = "INTENT_ONLY"
 
                 # =================================================
                 # NOTES
@@ -2577,6 +2593,7 @@ def discover(
                     f"{final_website or 'NO'} | "
                     f"resolved_email="
                     f"{resolved_email or 'NO'} | "
+                    f"verification_status={outreach_status} | "
                     f"snippet={snippet[:900]}"
                 )
 
