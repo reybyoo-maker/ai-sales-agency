@@ -11,9 +11,9 @@ MAX_AGE_DAYS = int(os.getenv("MAX_AGE_DAYS", "14"))
 ALLOW_UNKNOWN_DATE = os.getenv("ALLOW_UNKNOWN_DATE", "false").lower() in {"1", "true", "yes", "on"}
 
 SEARCH_RESULTS_PER_QUERY = int(os.getenv("SEARCH_RESULTS_PER_QUERY", "20"))
-SEARCH_BACKENDS = tuple(x.strip() for x in os.getenv("SEARCH_BACKENDS", "bing,brave").split(",") if x.strip())
-SEARCH_DELAY_SECONDS = float(os.getenv("SEARCH_DELAY_SECONDS", "1.5"))
-SEARCH_RETRY_DELAY_SECONDS = float(os.getenv("SEARCH_RETRY_DELAY_SECONDS", "5"))
+SEARCH_BACKENDS = tuple(x.strip() for x in os.getenv("SEARCH_BACKENDS", "auto").split(",") if x.strip())
+SEARCH_DELAY_SECONDS = float(os.getenv("SEARCH_DELAY_SECONDS", "1.0"))
+SEARCH_RETRY_DELAY_SECONDS = float(os.getenv("SEARCH_RETRY_DELAY_SECONDS", "4"))
 MAX_DISCOVERED_PER_RUN = int(os.getenv("MAX_DISCOVERED_PER_RUN", "150"))
 MAX_AI_PER_RUN = int(os.getenv("MAX_AI_PER_RUN", "50"))
 DAILY_SEND_LIMIT = int(os.getenv("DAILY_SEND_LIMIT", "100"))
