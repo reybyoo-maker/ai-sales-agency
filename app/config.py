@@ -27,6 +27,7 @@ SEND_ENABLED = os.getenv("SEND_ENABLED", "true").lower() in {"1", "true", "yes",
 CANDIDATE_NAME = os.getenv("CANDIDATE_NAME", "REYNALDI KURNIA SONJAYA").strip()
 CANDIDATE_WA = os.getenv("CANDIDATE_WA", "6287813871926").strip()
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "reybyoo@gmail.com").strip()
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD", "").strip()
 CANDIDATE_HEADLINE = os.getenv("CANDIDATE_HEADLINE", "Leader | Mentor | Marketing Officer | Data Analyst | Digital Marketing | Promotion | Influencer").strip()
 AI_PROJECT_NOTE = os.getenv("AI_PROJECT_NOTE", "Currently developing an Agent Agency AI project to simplify and improve work processes.").strip()
 
