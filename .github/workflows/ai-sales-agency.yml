@@ -40,7 +40,7 @@ jobs:
           SEARCH_BACKENDS: 'bing,brave,google'
           SEARCH_DELAY_SECONDS: '1.5'
           SEARCH_RETRY_DELAY_SECONDS: '5'
-          FLYER_MAX_IMAGES: '6'
+          FLYER_MAX_IMAGES: '10'
           FLYER_IMAGE_SEARCH: 'true'
           MAX_DISCOVERED_PER_RUN: '300'
           MAX_AI_PER_RUN: '60'
