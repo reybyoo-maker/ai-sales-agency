@@ -16,6 +16,7 @@ SEARCH_DELAY_SECONDS = float(os.getenv("SEARCH_DELAY_SECONDS", "1.0"))
 SEARCH_RETRY_DELAY_SECONDS = float(os.getenv("SEARCH_RETRY_DELAY_SECONDS", "4"))
 FLYER_MAX_IMAGES = int(os.getenv("FLYER_MAX_IMAGES", "6"))
 FLYER_IMAGE_SEARCH = os.getenv("FLYER_IMAGE_SEARCH", "true").lower() in {"1", "true", "yes", "on"}
+FLYER_IMAGE_RESULTS = int(os.getenv("FLYER_IMAGE_RESULTS", "4"))
 MAX_DISCOVERED_PER_RUN = int(os.getenv("MAX_DISCOVERED_PER_RUN", "150"))
 MAX_AI_PER_RUN = int(os.getenv("MAX_AI_PER_RUN", "50"))
 DAILY_SEND_LIMIT = int(os.getenv("DAILY_SEND_LIMIT", "100"))
@@ -50,7 +51,7 @@ if not CV_PDF_BASE64:
         CV_PDF_BASE64 = "".join(_cv_parts)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID", "").strip()
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
