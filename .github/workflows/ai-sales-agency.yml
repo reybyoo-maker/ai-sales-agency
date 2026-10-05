@@ -40,6 +40,7 @@ jobs:
           SEARCH_BACKENDS: 'bing,brave'
           SEARCH_DELAY_SECONDS: '1.5'
           SEARCH_RETRY_DELAY_SECONDS: '6'
+          FLYER_MAX_IMAGES: '6'
           MAX_DISCOVERED_PER_RUN: '300'
           MAX_AI_PER_RUN: '60'
           CV_PDF_BASE64: ${{ secrets.CV_PDF_BASE64 }}
