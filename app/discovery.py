@@ -305,7 +305,12 @@ def prospect_score(title: str, text: str, category: str, company_tier_value: str
         score += 10
         reasons.append("perusahaan terkenal +10")
 
-    if source_domain in {"linkedin.com", "jobstreet.co.id", "glints.com", "indeed.com", "kalibrr.com"}:
+    if source_domain in {
+        "linkedin.com", "id.linkedin.com", "glints.com", "id.jobstreet.com",
+        "indeed.com", "id.indeed.com", "kalibrr.com", "kitalulus.com",
+        "dealls.com", "pintarnya.com", "talentics.id", "karir.com",
+        "loker.id", "topkarir.com", "ekrut.com", "techinasia.com",
+    }:
         score += 5
         reasons.append("sumber job market +5")
 
@@ -446,6 +451,7 @@ def search_once() -> list[dict]:
 
     rows: list[dict] = []
     seen: set[str] = set()
+    seen_urls: set[str] = set()
 
     def consume_items(items: list[dict], source_label: str) -> bool:
         for item in items:
@@ -461,6 +467,10 @@ def search_once() -> list[dict]:
                 continue
 
             page_text, image_urls = fetch_page_details(url)
+            url_key = url.split("#", 1)[0].split("?", 1)[0].rstrip("/").lower()
+            if url_key in seen_urls:
+                continue
+            seen_urls.add(url_key)
             full_text = normalize(f"{search_text} {page_text}")
             if LOCATION_QUERY.lower() not in full_text.lower():
                 continue
