@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import time
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
@@ -18,6 +19,9 @@ from .config import (
     MAX_AGE_DAYS,
     MAX_DISCOVERED_PER_RUN,
     OPEN_BLOCK_TERMS,
+    SEARCH_BACKENDS,
+    SEARCH_DELAY_SECONDS,
+    SEARCH_RETRY_DELAY_SECONDS,
     SEARCH_RESULTS_PER_QUERY,
 )
 
@@ -294,13 +298,36 @@ def search_once() -> list[dict]:
     rows: list[dict] = []
     seen: set[str] = set()
 
-    with DDGS() as ddgs:
-        for query in queries:
-            try:
-                items = ddgs.text(query, region="id-id", safesearch="moderate", max_results=SEARCH_RESULTS_PER_QUERY, backend="auto")
-            except Exception as exc:
-                print(f"SEARCH ERROR | {type(exc).__name__}: {exc}")
-                continue
+    with DDGS(timeout=15) as ddgs:
+        for query_index, query in enumerate(queries, start=1):
+            items = []
+            last_error = None
+
+            # Use one backend at a time. Multi-backend racing can amplify rate
+            # limits; current ddgs versions document many individual providers.
+            for backend_name in SEARCH_BACKENDS:
+                try:
+                    items = ddgs.text(
+                        query,
+                        region="id-id",
+                        safesearch="moderate",
+                        timelimit="m",
+                        max_results=SEARCH_RESULTS_PER_QUERY,
+                        backend=backend_name,
+                    )
+                    if items:
+                        break
+                except Exception as exc:
+                    last_error = exc
+                    print(
+                        f"SEARCH ERROR | query={query_index}/{len(queries)} "
+                        f"backend={backend_name} | {type(exc).__name__}: {exc}"
+                    )
+                    time.sleep(SEARCH_RETRY_DELAY_SECONDS)
+
+            if not items and last_error is not None:
+                print(f"SEARCH SKIPPED | query={query_index}/{len(queries)}")
+            time.sleep(SEARCH_DELAY_SECONDS)
 
             for item in items or []:
                 url = normalize(item.get("href", ""))
