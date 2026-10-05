@@ -24,6 +24,8 @@ from .config import (
     SEARCH_DELAY_SECONDS,
     SEARCH_RETRY_DELAY_SECONDS,
     SEARCH_RESULTS_PER_QUERY,
+    FLYER_IMAGE_SEARCH,
+    FLYER_IMAGE_RESULTS,
 )
 
 MONTHS = {
@@ -446,6 +448,26 @@ def search_once() -> list[dict]:
                     continue
 
                 page_text, image_urls = fetch_page_details(url)
+
+                # Some social/portal pages do not expose their poster image in
+                # HTML. Search for closely related vacancy images as a fallback.
+                if not image_urls and FLYER_IMAGE_SEARCH:
+                    try:
+                        image_query = f'"{title}" "{LOCATION_QUERY}" lowongan'
+                        image_items = ddgs.images(
+                            image_query,
+                            region="id-id",
+                            safesearch="moderate",
+                            max_results=FLYER_IMAGE_RESULTS,
+                            backend="bing",
+                        )
+                        for img in image_items or []:
+                            image_url = normalize(img.get("image") or img.get("thumbnail") or "")
+                            if image_url and image_url not in image_urls:
+                                image_urls.append(image_url)
+                    except Exception as exc:
+                        print(f"FLYER IMAGE SEARCH ERROR | {type(exc).__name__}: {exc}")
+
                 full_text = normalize(f"{search_text} {page_text}")
                 if LOCATION_QUERY.lower() not in full_text.lower():
                     continue
