@@ -207,6 +207,22 @@ def extract_image_urls(html: str, base_url: str, limit: int = 10) -> list[str]:
     return candidates[:limit]
 
 
+def filter_flyer_images(urls: list[str]) -> list[str]:
+    blocked = (
+        "logo", "favicon", "icon", "avatar", "profile", "brandmark",
+        "placeholder", "sprite", "emoji", "badge", "kitalulus-logo",
+    )
+    result: list[str] = []
+    for image_url in urls:
+        low = image_url.lower()
+        if any(token in low for token in blocked):
+            continue
+        if image_url not in result:
+            result.append(image_url)
+        if len(result) >= FLYER_MAX_IMAGES:
+            break
+    return result
+
 def fetch_page_details(url: str) -> tuple[str, list[str]]:
     try:
         r = requests.get(
@@ -228,7 +244,7 @@ def fetch_page_details(url: str) -> tuple[str, list[str]]:
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup(["script", "style", "noscript", "svg"]):
             tag.decompose()
-        return normalize(soup.get_text(" ", strip=True))[:14000], images
+        return normalize(soup.get_text(" ", strip=True))[:14000], filter_flyer_images(images)
     except requests.RequestException:
         return "", []
 
@@ -330,6 +346,21 @@ PLATFORM_DOMAINS = {
     "kitalulus.com", "dealls.com",
 }
 
+def is_job_detail_url(url: str) -> bool:
+    host = domain(url)
+    path = urlparse(url).path.lower().rstrip("/")
+    if host in {"linkedin.com", "id.linkedin.com"}:
+        return "/jobs/view/" in path
+    if host == "glints.com":
+        return "/opportunities/jobs/" in path
+    if host == "kitalulus.com":
+        return "/lowongan/detail/" in path
+    if host == "dealls.com":
+        return path.startswith("/loker/") and "/lokasi/" not in path and path != "/loker"
+    if host == "id.jobstreet.com":
+        return "/job/" in path or "/jobs/" in path
+    return False
+
 VACANCY_SIGNALS = (
     "lowongan", "lowong", "loker", "job vacancy", "vacancy",
     "career", "careers", "recruitment", "hiring", "apply",
@@ -364,6 +395,8 @@ def fetch_platform_index_items() -> list[dict]:
                 absolute = urljoin(index_url, href)
                 parsed_domain = domain(absolute)
                 if parsed_domain not in PLATFORM_DOMAINS:
+                    continue
+                if not is_job_detail_url(absolute):
                     continue
                 low = f"{title} {absolute}".lower()
                 if not any(signal in low for signal in VACANCY_SIGNALS):
