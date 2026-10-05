@@ -76,7 +76,7 @@ def main() -> None:
             rows.append(row)
             existing.add(job['job_id'])
             added += 1
-            if ws and status == 'READY':
+            if ws:
                 try:
                     append_job(ws, row)
                 except Exception as exc:
