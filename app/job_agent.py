@@ -43,9 +43,10 @@ def analyze_job(job: dict[str, Any], cv_text: str, profile: dict[str, str]) -> d
 Kamu adalah career application assistant.
 
 Profil kandidat:
-Headline: {CANDIDATE_HEADLINE}
-WhatsApp: {CANDIDATE_WA}
-Project yang sedang dikembangkan: {AI_PROJECT_NOTE}
+Nama: {profile.get('candidate_name', '')}
+Headline: {profile.get('headline', '')}
+WhatsApp: {profile.get('whatsapp', '')}
+Project yang sedang dikembangkan: {profile.get('ai_project', '')}
 
 CV kandidat:
 {cv_text}
