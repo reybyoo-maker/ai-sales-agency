@@ -11,12 +11,10 @@ MAX_AGE_DAYS = int(os.getenv("MAX_AGE_DAYS", "14"))
 ALLOW_UNKNOWN_DATE = os.getenv("ALLOW_UNKNOWN_DATE", "false").lower() in {"1", "true", "yes", "on"}
 
 SEARCH_RESULTS_PER_QUERY = int(os.getenv("SEARCH_RESULTS_PER_QUERY", "20"))
-SEARCH_BACKENDS = tuple(x.strip() for x in os.getenv("SEARCH_BACKENDS", "bing,brave,google").split(",") if x.strip())
-SEARCH_DELAY_SECONDS = float(os.getenv("SEARCH_DELAY_SECONDS", "1.0"))
-SEARCH_RETRY_DELAY_SECONDS = float(os.getenv("SEARCH_RETRY_DELAY_SECONDS", "4"))
+SEARCH_BACKENDS = tuple(x.strip() for x in os.getenv("SEARCH_BACKENDS", "google").split(",") if x.strip())
+SEARCH_DELAY_SECONDS = float(os.getenv("SEARCH_DELAY_SECONDS", "2.5"))
+SEARCH_RETRY_DELAY_SECONDS = float(os.getenv("SEARCH_RETRY_DELAY_SECONDS", "8"))
 FLYER_MAX_IMAGES = int(os.getenv("FLYER_MAX_IMAGES", "10"))
-FLYER_IMAGE_SEARCH = os.getenv("FLYER_IMAGE_SEARCH", "true").lower() in {"1", "true", "yes", "on"}
-FLYER_IMAGE_RESULTS = int(os.getenv("FLYER_IMAGE_RESULTS", "4"))
 MAX_DISCOVERED_PER_RUN = int(os.getenv("MAX_DISCOVERED_PER_RUN", "150"))
 MAX_AI_PER_RUN = int(os.getenv("MAX_AI_PER_RUN", "50"))
 DAILY_SEND_LIMIT = int(os.getenv("DAILY_SEND_LIMIT", "100"))
