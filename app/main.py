@@ -36,11 +36,17 @@ def main() -> None:
     rows = load_rows()
 
     existing = {str(r.get('job_id', '')).strip() for r in sheet_rows + rows if r.get('job_id')}
+    existing_urls = {
+        str(r.get('source_url', '')).strip().split('#', 1)[0].split('?', 1)[0].rstrip('/').lower()
+        for r in sheet_rows + rows
+        if r.get('source_url')
+    }
     jobs = search_once()
     new_jobs = []
 
     for job in jobs:
-        if job['job_id'] in existing:
+        source_url_key = str(job.get('source_url', '')).strip().split('#', 1)[0].split('?', 1)[0].rstrip('/').lower()
+        if job['job_id'] in existing or (source_url_key and source_url_key in existing_urls):
             continue
         row = {
             **job,
@@ -57,6 +63,8 @@ def main() -> None:
         rows.append(row)
         new_jobs.append(row)
         existing.add(job['job_id'])
+        if source_url_key:
+            existing_urls.add(source_url_key)
         try:
             append_job(ws, row)
         except Exception as exc:
