@@ -78,7 +78,7 @@ def main() -> None:
     current_sheet_rows = records(ws)
     candidates = [
         r for r in current_sheet_rows
-        if (r.get('recipient_email') or r.get('company_tier') == 'famous')
+        if (r.get('recipient_email') or r.get('company_tier') == 'famous' or r.get('flyer_image_urls'))
         and not str(r.get('subject', '')).strip()
     ][:MAX_AI_PER_RUN]
 
@@ -86,6 +86,9 @@ def main() -> None:
     for job in candidates:
         try:
             result = analyze_job(job, cv_text, profile)
+            flyer_gmail = str(result.get('gmail_application_email', '')).strip().lower()
+            if flyer_gmail.endswith('@gmail.com') and not job.get('recipient_email'):
+                job['recipient_email'] = flyer_gmail
             status = 'SIAP_REVIEW' if job.get('recipient_email') else 'WATCHLIST'
             update_row_by_job_id(
                 ws, job['job_id'],
@@ -94,6 +97,8 @@ def main() -> None:
                 subject=str(result.get('subject', '')).strip(),
                 body=str(result.get('body', '')).strip(),
                 flyer_summary=str(result.get('flyer_summary', '')).strip(),
+                recipient_email=job.get('recipient_email', ''),
+                application_method='GMAIL' if job.get('recipient_email') else job.get('application_method', ''),
                 status=status,
             )
             job['candidate_headline'] = profile.get('headline', '')
@@ -101,6 +106,7 @@ def main() -> None:
             job['subject'] = str(result.get('subject', '')).strip()
             job['body'] = str(result.get('body', '')).strip()
             job['flyer_summary'] = str(result.get('flyer_summary', '')).strip()
+            job['application_method'] = 'GMAIL' if job.get('recipient_email') else job.get('application_method', '')
             job['status'] = status
             drafted += 1
             print(f'DRAFTED | score={job.get("prospect_score",0)} | {job.get("job_title")} | {job.get("recipient_email","")}')
