@@ -51,8 +51,23 @@ def get_profile_ws():
     return ws
 
 def get_profile() -> dict[str, str]:
-    rows = get_profile_ws().get_all_records()
-    return {str(r.get('key', '')).strip(): str(r.get('value', '')).strip() for r in rows if r.get('key')}
+    ws = get_profile_ws()
+    values = ws.get_all_values()
+    if not values:
+        return {}
+    headers = [str(x).strip() for x in values[0]]
+    if "candidate_name" in headers and "headline" in headers:
+        row = values[1] if len(values) > 1 else []
+        return {
+            headers[i]: str(row[i]).strip() if i < len(row) else ""
+            for i in range(len(headers))
+        }
+    rows = ws.get_all_records()
+    return {
+        str(r.get('key', '')).strip(): str(r.get('value', '')).strip()
+        for r in rows
+        if r.get('key')
+    }
 
 def get_ws():
     sh = _connect()
