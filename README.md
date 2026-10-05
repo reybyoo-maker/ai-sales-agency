@@ -1,47 +1,87 @@
 # Bandung Job Hunter
 
-Repo ini sekarang menjadi mesin pencari lowongan kerja Bandung berbasis CV.
+Sistem ini terdiri dari dua tahap: mengumpulkan database lowongan dan mengirim hanya baris yang kamu pilih di Google Sheets.
 
-## Fokus
-- Semua aspek marketing: marketing, digital/performance marketing, brand, social media, content, copywriting, SEO/SEM, CRM, KOL, partnership, marcom, PR, activation, sales/marketing, dan variasinya.
-- Back office yang relevan dengan CV: admin, finance/accounting, HR/recruitment, purchasing/procurement, legal, secretary, data entry, operations, customer service/support, dan variasinya.
-- Mode kerja: full-time, part-time, freelance, contract, internship, hybrid, remote/WFH, dan on-site.
-- Lokasi: Bandung.
-- Prioritas: listing baru dan/atau masih terbuka.
-- Penerima: alamat Gmail publik yang terdeteksi dalam konteks menerima lamaran.
+## 1. Discovery
 
-## AI CV matching
-CV PDF menjadi sumber utama. Gemini membaca CV dan lowongan, memberi fit score, lalu membuat subject dan body email yang berbeda untuk setiap posisi. Pengalaman atau skill tidak boleh diada-adakan.
+Agent mencari lowongan publik di Bandung untuk:
+- semua aspek marketing: marketing, digital marketing, performance marketing, brand, social media, content, copywriting, SEO/SEM, CRM, KOL, influencer, marketing communication, PR, activation, partnership, growth, sales & marketing, dan variasinya;
+- back office: admin, administration, finance, accounting, HR/HRD, recruitment, purchasing, procurement, legal, secretary, data entry, operations, customer service/support, general affair, dan variasinya;
+- semua mode kerja: full-time, part-time, freelance, contract, internship, hybrid, remote/WFH, dan on-site.
 
-Subjek default:
-`Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA 6287813871926`
+Lowongan harus relatif hangat, default maksimal 14 hari atau masih mempunyai deadline aktif. Lowongan umum tanpa tanggal yang dapat diverifikasi tidak dimasukkan kecuali ALLOW_UNKNOWN_DATE=true.
 
-AI dapat memendekkan subject bila nama posisi terlalu panjang. Project disebut secara natural, bukan sebagai pengalaman kerja fiktif.
+Aturan email:
+- Jika lowongan menyediakan Gmail untuk menerima lamaran, lowongan masuk sebagai kandidat kirim.
+- Jika perusahaan terkenal/bagus tetapi memakai ATS/portal resmi tanpa Gmail, lowongan tetap masuk sebagai WATCHLIST.
+- Lowongan non-Gmail biasa tidak dimasukkan.
 
-Body menyebut CV terlampir dan WhatsApp 6287813871926.
+Sistem menggabungkan beberapa sumber publik dan query perusahaan besar. Tidak ada crawler yang bisa menjamin mencakup 100% internet.
 
-## Google Sheets
-Tab `Job Applications` otomatis membuat/menambahkan header: job_id, job_title, company, company_tier, category, work_mode, location, source_url, published_date, deadline_date, recipient_email, candidate_headline, ai_project_note, fit_score, fit_reason, subject, body, status, send_approved, dan timestamp. Jadi kolom `candidate_headline` akan terisi otomatis dengan headline CV.
+## 2. Google Sheets
 
-## Jadwal
-GitHub Actions menjalankan discovery setiap hari pada beberapa window pagi/siang WIB: sekitar 06:00, 08:00, 10:00, dan 13:00 WIB. Benchmark 2026 yang tersedia cenderung menempatkan Selasa-Kamis pagi sebagai window yang baik, tetapi timing bukan jaminan diterima dan kualitas kecocokan tetap faktor utama.
+Sheet utama: Job Applications
 
-## Secrets
-- `CV_PDF_BASE64` — CV PDF disimpan sebagai GitHub Actions secret, bukan di repository publik.
-- `GEMINI_API_KEY`
-- `GOOGLE_SHEET_ID`
-- `GOOGLE_SERVICE_ACCOUNT_JSON`
+Kolom:
+job_id | found_at | published_date | deadline_date | age_days | job_title | company | company_tier | category | work_mode | location | source_url | source_domain | application_method | recipient_email | prospect_score | score_reason | candidate_headline | ai_project_note | subject | body | status | sent_at | send_error | notes
 
-Untuk mengisi `CV_PDF_BASE64` dari file CV di komputer: `base64 -w 0 Reynaldi_Kurnia_Sonjaya_Resume.pdf | gh secret set CV_PDF_BASE64` (macOS: gunakan `base64 < file.pdf | tr -d '\\n' | gh secret set CV_PDF_BASE64`).
+prospect_score adalah skor kualitas lowongan 0-100 berdasarkan kebaruan, Gmail, relevansi kategori, kualitas sumber, dan perusahaan terkenal. Ini bukan skor kecocokan CV.
 
-Email kandidat dikonfigurasi sebagai `reybyoo@gmail.com` dan WhatsApp sebagai `6287813871926` di workflow. Perlu diperhatikan: CV yang diunggah saat ini masih menampilkan email `reynaldis334@gmail.com`; sebaiknya samakan email di CV dengan alamat pengirim sebelum mulai melamar agar tidak membingungkan HR.
+Status:
+BARU = baru ditemukan
+SIAP_REVIEW = email sudah dibuat AI
+KIRIM = kamu memilih lowongan ini untuk dikirim
+TERKIRIM = berhasil dikirim
+ERROR = pengiriman gagal
+WATCHLIST = menarik tetapi tidak ada Gmail
 
-## Pengiriman
-Mesin ini otomatis mencari, menyaring, menganalisis, dan menyiapkan lamaran. Pengiriman massal tanpa review tidak diaktifkan. Baris yang lolos berstatus `READY` sehingga bisa ditinjau sebelum dikirim.
+Cara kerja utama: ubah status dari SIAP_REVIEW menjadi KIRIM. Peak Sender akan mengambil baris itu otomatis pada jadwal pengiriman berikutnya.
 
-Gunakan kredensial Gmail yang aman; jangan memasukkan password Gmail biasa ke repository.
+## 3. Candidate Profile
 
-## Catatan
-Tidak ada mesin pencari yang dapat menjamin benar-benar melihat semua lowongan di internet. Sistem menggabungkan beberapa query publik, melakukan deduplikasi, dan menyimpan hasil yang terdeteksi.
-## Kirim setelah review
-Untuk mengirim satu lamaran yang sudah berstatus `READY`, gunakan `python -m app.send_single JOB_ID` pada environment yang memiliki kredensial Gmail dan CV PDF. Sistem pengiriman tidak mempunyai mode bulk 100-300 email otomatis.
+Sheet kedua: Candidate Profile
+
+Gunakan dua kolom: key dan value.
+
+candidate_name = REYNALDI KURNIA SONJAYA
+headline = Leader | Mentor | Marketing Officer | Data Analyst | Digital Marketing | Promotion | Influencer
+email = reybyoo@gmail.com
+whatsapp = 6287813871926
+ai_project = Saat ini saya juga mengembangkan project Agent Agency AI untuk membantu pekerjaan menjadi lebih mudah, terstruktur, dan efisien.
+
+Kamu boleh mengubah headline dan ai_project kapan saja. Run berikutnya AI membaca nilai terbaru dari Sheet.
+
+CV PDF dibaca untuk mengambil pengalaman/skill yang relevan ketika AI menulis lamaran, tetapi CV tidak dipakai untuk membatasi lowongan yang dicari.
+
+## 4. Email AI
+
+AI membuat body berbeda untuk setiap lowongan berdasarkan judul/isi posisi dan profil kandidat.
+
+Contoh subject:
+Lamaran [Nama Posisi] | [Nama Kandidat] | WA 6287813871926
+
+Bila relevan, body dapat menyebut project Agent Agency AI sebagai project yang sedang dikembangkan untuk membantu pekerjaan menjadi lebih mudah, terstruktur, dan efisien. Tidak boleh diposisikan sebagai pengalaman kerja fiktif.
+
+CV PDF dilampirkan saat email dikirim.
+
+## 5. Peak Sender
+
+GitHub Actions menjalankan pengirim pada window pagi/siang WIB.
+
+Schedule saat ini sekitar 06:30, 07:30, 08:30, 09:30, 10:30, dan 13:30 WIB setiap hari.
+
+Setiap run hanya memproses baris dengan status KIRIM dan recipient_email berakhiran @gmail.com.
+
+## 6. Secrets GitHub
+
+Wajib diset:
+CV_PDF_BASE64
+GEMINI_API_KEY
+GOOGLE_SHEET_ID
+GOOGLE_SERVICE_ACCOUNT_JSON
+GMAIL_APP_PASSWORD
+
+Pengirim: reybyoo@gmail.com
+WhatsApp: 6287813871926
+
+Jangan menyimpan password Gmail biasa di repository.
