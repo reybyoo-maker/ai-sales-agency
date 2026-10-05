@@ -4,47 +4,73 @@ import os
 import re
 import smtplib
 import ssl
+import unicodedata
 from email.message import EmailMessage
 from urllib.parse import quote
 
 from .config import PORTFOLIO_URL
 
 
-def clean_text(value: str) -> str:
+def normalize_value(value: str) -> str:
     """
-    Membersihkan karakter tersembunyi dari data.
+    Membersihkan karakter Unicode/spasi tersembunyi.
     """
     if not value:
         return ""
 
-    return (
-        str(value)
-        .replace("\xa0", " ")
+    value = unicodedata.normalize(
+        "NFKC",
+        str(value),
+    )
+
+    # Menghapus semua whitespace Unicode,
+    # termasuk NBSP (\xa0).
+    value = "".join(value.split())
+
+    return value.strip()
+
+
+def clean_text(value: str) -> str:
+    """
+    Membersihkan teks biasa tanpa menghapus
+    semua spasi di tengah kalimat.
+    """
+    if not value:
+        return ""
+
+    value = unicodedata.normalize(
+        "NFKC",
+        str(value),
+    )
+
+    value = (
+        value
         .replace("\u200b", "")
         .replace("\u200c", "")
         .replace("\u200d", "")
         .replace("\ufeff", "")
-        .strip()
+        .replace("\xa0", " ")
     )
+
+    return value.strip()
 
 
 def clean_email_address(value: str) -> str:
     """
-    Membersihkan alamat email dari karakter tersembunyi.
-    Alamat email normal harus ASCII.
+    Membersihkan alamat email agar ASCII-valid.
     """
-    value = clean_text(value)
+    value = normalize_value(value)
 
-    # Hapus seluruh whitespace di sekitar alamat.
-    value = re.sub(r"\s+", "", value)
+    value = re.sub(
+        r"\s+",
+        "",
+        value,
+    )
 
     return value
 
 
 def valid_email_address(value: str) -> bool:
-    """
-    Validasi dasar email.
-    """
     value = clean_email_address(value)
 
     if not value:
@@ -65,18 +91,15 @@ def valid_email_address(value: str) -> bool:
     return True
 
 
-def wa_link(business_name: str) -> str:
-    number = (
+def wa_link(
+    business_name: str,
+) -> str:
+
+    number = normalize_value(
         os.getenv(
             "WA_NUMBER",
             "",
         )
-        .strip()
-        .replace("+", "")
-        .replace(" ", "")
-        .replace("-", "")
-        .replace("(", "")
-        .replace(")", "")
     )
 
     if not number:
@@ -93,7 +116,10 @@ def wa_link(business_name: str) -> str:
     )
 
 
-def _remove_whatsapp_footer(body: str) -> str:
+def _remove_whatsapp_footer(
+    body: str,
+) -> str:
+
     marker = "Lanjut via WhatsApp:"
 
     if marker not in body:
@@ -105,7 +131,10 @@ def _remove_whatsapp_footer(body: str) -> str:
     )[0].strip()
 
 
-def _remove_duplicate_portfolio(body: str) -> str:
+def _remove_duplicate_portfolio(
+    body: str,
+) -> str:
+
     body = body.strip()
 
     if PORTFOLIO_URL not in body:
@@ -116,8 +145,10 @@ def _remove_duplicate_portfolio(body: str) -> str:
     )
 
     prefix = body[:first_position]
+
     suffix = body[
-        first_position + len(PORTFOLIO_URL):
+        first_position
+        + len(PORTFOLIO_URL):
     ]
 
     while PORTFOLIO_URL in suffix:
@@ -133,7 +164,10 @@ def _remove_duplicate_portfolio(body: str) -> str:
     ).strip()
 
 
-def _ensure_portfolio(body: str) -> str:
+def _ensure_portfolio(
+    body: str,
+) -> str:
+
     body = _remove_duplicate_portfolio(
         body
     )
@@ -153,7 +187,9 @@ def build_message(
     business_name: str,
 ) -> str:
 
-    body = clean_text(body)
+    body = clean_text(
+        body or ""
+    )
 
     body = _remove_whatsapp_footer(
         body
@@ -183,12 +219,7 @@ def send_email(
     body: str,
 ) -> None:
 
-    # Bersihkan alamat tujuan.
-    to_email = clean_email_address(
-        to_email
-    )
-
-    # Ambil alamat Gmail pengirim.
+    # Bersihkan email pengirim.
     user = clean_email_address(
         os.getenv(
             "GMAIL_ADDRESS",
@@ -196,34 +227,34 @@ def send_email(
         )
     )
 
-    # Password App Password Gmail.
-    password = (
+    # PENTING:
+    # ''.join(split()) menghapus SEMUA whitespace
+    # Unicode, termasuk NBSP (\xa0).
+    password = normalize_value(
         os.getenv(
             "GMAIL_APP_PASSWORD",
             "",
         )
-        .replace(" ", "")
-        .strip()
+    )
+
+    # Bersihkan email penerima.
+    to_email = clean_email_address(
+        to_email
     )
 
     if not user or not password:
         raise RuntimeError(
             "GMAIL_ADDRESS / "
-            "GMAIL_APP_PASSWORD "
-            "belum diisi"
+            "GMAIL_APP_PASSWORD belum diisi"
         )
 
-    if not valid_email_address(
-        user
-    ):
+    if not valid_email_address(user):
         raise RuntimeError(
-            "GMAIL_ADDRESS tidak valid "
-            "atau mengandung karakter tersembunyi"
+            f"GMAIL_ADDRESS tidak valid: "
+            f"{user!r}"
         )
 
-    if not valid_email_address(
-        to_email
-    ):
+    if not valid_email_address(to_email):
         raise RuntimeError(
             f"Alamat email tujuan tidak valid: "
             f"{to_email!r}"
@@ -231,7 +262,12 @@ def send_email(
 
     subject = clean_text(
         subject
-    ) or "Ide landing page untuk bisnis Anda"
+    )
+
+    if not subject:
+        subject = (
+            "Ide landing page untuk bisnis Anda"
+        )
 
     body = clean_text(
         body
@@ -243,8 +279,6 @@ def send_email(
     msg["To"] = to_email
     msg["Subject"] = subject[:120]
 
-    # EmailMessage menangani encoding UTF-8
-    # untuk isi email.
     msg.set_content(
         body,
         charset="utf-8",
@@ -272,5 +306,7 @@ def send_email(
         )
 
         server.send_message(
-            msg
+            msg,
+            from_addr=user,
+            to_addrs=[to_email],
         )
