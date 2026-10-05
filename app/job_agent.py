@@ -60,7 +60,7 @@ Aturan:
 4. Jangan mengarang pengalaman, skill, nama HR, gaji, atau fakta perusahaan.
 5. Buat email lamaran singkat, natural, profesional, dan spesifik ke posisi.
 6. Jangan menyebut sistem otomatis. Project Agent Agency AI boleh disebut secara natural bila relevan dengan posisi, sebagai project yang sedang dikembangkan untuk membantu membuat pekerjaan lebih mudah dan terstruktur. Jangan membuat klaim teknis yang tidak ada di CV.
-7. Subjek: Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA 6287813871926
+7. Subjek: Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA 6287813871926. Jaga maksimal sekitar 95 karakter; bila terlalu panjang, ringkas nama posisi/proyek tanpa menghapus identitas kandidat dan WA.
 8. Body harus menyebut CV terlampir dan WhatsApp 6287813871926. Tambahkan satu kalimat tentang project Agent Agency AI hanya bila relevan; jangan membuat email terasa seperti promosi.
 9. Jangan menjamin diterima atau membuat klaim yang tidak ada di CV.
 10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.
