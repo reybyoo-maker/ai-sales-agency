@@ -40,7 +40,7 @@ jobs:
           SEARCH_BACKENDS: 'google'
           SEARCH_DELAY_SECONDS: '2.5'
           SEARCH_RETRY_DELAY_SECONDS: '8'
-          FLYER_MAX_IMAGES: '10'
+          FLYER_MAX_IMAGES: '20'
           MAX_DISCOVERED_PER_RUN: '300'
           MAX_AI_PER_RUN: '60'
           CV_PDF_BASE64: ${{ secrets.CV_PDF_BASE64 }}
