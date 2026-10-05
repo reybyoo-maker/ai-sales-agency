@@ -242,35 +242,22 @@ def prospect_score(title: str, text: str, category: str, company_tier_value: str
 
 def search_once() -> list[dict]:
     now = datetime.now().astimezone()
-    # Broad queries: do not require "gmail" here. Gmail is detected after
-    # opening the result page; otherwise valid vacancies are filtered out too early.
+    # Keep the query set compact enough to avoid search-provider throttling.
+    # Search broadly first, then classify after fetching each result.
     queries = [
         f'"{LOCATION_QUERY}" lowongan marketing',
-        f'"{LOCATION_QUERY}" loker marketing',
-        f'"{LOCATION_QUERY}" lowongan "digital marketing"',
-        f'"{LOCATION_QUERY}" lowongan "performance marketing"',
-        f'"{LOCATION_QUERY}" lowongan "social media"',
-        f'"{LOCATION_QUERY}" lowongan "content creator"',
-        f'"{LOCATION_QUERY}" lowongan brand',
-        f'"{LOCATION_QUERY}" lowongan "marketing communication"',
-        f'"{LOCATION_QUERY}" lowongan KOL influencer',
-        f'"{LOCATION_QUERY}" lowongan SEO SEM',
-        f'"{LOCATION_QUERY}" lowongan CRM',
-        f'"{LOCATION_QUERY}" lowongan partnership growth',
+        f'"{LOCATION_QUERY}" lowongan digital marketing',
+        f'"{LOCATION_QUERY}" lowongan social media',
+        f'"{LOCATION_QUERY}" lowongan content creator',
         f'"{LOCATION_QUERY}" lowongan admin',
-        f'"{LOCATION_QUERY}" loker administrasi',
         f'"{LOCATION_QUERY}" lowongan accounting finance',
         f'"{LOCATION_QUERY}" lowongan HRD recruitment',
         f'"{LOCATION_QUERY}" lowongan purchasing procurement',
         f'"{LOCATION_QUERY}" lowongan legal secretary',
         f'"{LOCATION_QUERY}" lowongan operations',
-        f'"{LOCATION_QUERY}" lowongan "customer service"',
-        f'"{LOCATION_QUERY}" lowongan "back office"',
+        f'"{LOCATION_QUERY}" lowongan customer service',
+        f'"{LOCATION_QUERY}" lowongan back office',
         f'"{LOCATION_QUERY}" lowongan sales marketing',
-        f'"{LOCATION_QUERY}" lowongan "business development"',
-        f'"{LOCATION_QUERY}" lowongan "general affair"',
-        f'"{LOCATION_QUERY}" lowongan remote',
-        f'"{LOCATION_QUERY}" lowongan hybrid',
         f'site:glints.com "{LOCATION_QUERY}" lowongan',
         f'site:id.indeed.com "{LOCATION_QUERY}" lowongan',
         f'site:jobstreet.co.id "{LOCATION_QUERY}" lowongan',
@@ -282,7 +269,6 @@ def search_once() -> list[dict]:
         f'"{LOCATION_QUERY}" lowongan EIGER',
         f'"{LOCATION_QUERY}" lowongan Telkom',
         f'"{LOCATION_QUERY}" lowongan BCA',
-        f'"{LOCATION_QUERY}" lowongan "Bank Mandiri"',
         f'"{LOCATION_QUERY}" lowongan BRI',
         f'"{LOCATION_QUERY}" lowongan BNI',
         f'"{LOCATION_QUERY}" lowongan Grab',
@@ -291,33 +277,36 @@ def search_once() -> list[dict]:
         f'"{LOCATION_QUERY}" lowongan Shopee',
         f'"{LOCATION_QUERY}" lowongan Traveloka',
     ]
+
     rows: list[dict] = []
     seen: set[str] = set()
 
     with DDGS(timeout=15) as ddgs:
         for query_index, query in enumerate(queries, start=1):
             items = []
-            last_error = None
             for backend_name in SEARCH_BACKENDS:
                 try:
                     items = ddgs.text(
                         query,
                         region="id-id",
                         safesearch="moderate",
-                        timelimit="m",
                         max_results=SEARCH_RESULTS_PER_QUERY,
                         backend=backend_name,
                     )
                     if items:
+                        print(
+                            f"SEARCH OK | query={query_index}/{len(queries)} "
+                            f"backend={backend_name} results={len(items)}"
+                        )
                         break
                 except Exception as exc:
-                    last_error = exc
                     print(
                         f"SEARCH ERROR | query={query_index}/{len(queries)} "
                         f"backend={backend_name} | {type(exc).__name__}: {exc}"
                     )
                     time.sleep(SEARCH_RETRY_DELAY_SECONDS)
-            if not items and last_error is not None:
+
+            if not items:
                 print(f"SEARCH SKIPPED | query={query_index}/{len(queries)}")
             time.sleep(SEARCH_DELAY_SECONDS)
 
