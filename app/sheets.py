@@ -152,11 +152,16 @@ def append_prospect(
         for header in headers
     ]
 
-    # Semua prospect baru mulai sebagai NEW.
+    # Preserve the discovery status (INTENT_ONLY / NO_WEBSITE /
+    # NO_EMAIL / NEW). Only default to NEW when no status was supplied.
     if "outreach_status" in headers:
-        row[
-            headers.index("outreach_status")
-        ] = "NEW"
+        status_index = headers.index("outreach_status")
+        existing_status = str(
+            row[status_index] or ""
+        ).strip()
+
+        if not existing_status:
+            row[status_index] = "NEW"
 
     ws.append_row(
         row,
