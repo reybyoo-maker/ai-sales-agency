@@ -334,11 +334,19 @@ def prospect_score(title: str, text: str, category: str, company_tier_value: str
     return min(score, 100), "; ".join(reasons)
 
 PLATFORM_INDEX_URLS = (
-    "https://id.linkedin.com/jobs/search?location=Bandung",
+    "https://id.linkedin.com/jobs/jobs-in-bandung",
+    "https://id.linkedin.com/jobs/linkedin-jobs-bandung",
     "https://glints.com/id/job-location/indonesia/jawa-barat/bandung",
+    "https://glints.com/id/explore/marketing-team/in-bandung",
+    "https://glints.com/id/explore/marketing-communicatioans/in-bandung",
     "https://id.jobstreet.com/id/jobs/in-Bandung-Jawa-Barat",
     "https://www.kitalulus.com/lowongan/in-kota-bandung",
+    "https://www.kitalulus.com/lowongan/jobs-Bandung",
     "https://dealls.com/loker/lokasi/loker-bandung",
+    "https://id.indeed.com/l-bandung-jobs.html",
+    "https://id.indeed.com/jobs?l=Bandung",
+    "https://jobs.talentics.id/jobs?location=city-36",
+    "https://www.topkarir.com/lowongan",
 )
 
 PLATFORM_DOMAINS = {
@@ -359,6 +367,12 @@ def is_job_detail_url(url: str) -> bool:
         return path.startswith("/loker/") and "/lokasi/" not in path and path != "/loker"
     if host == "id.jobstreet.com":
         return "/job/" in path or "/jobs/" in path
+    if host == "id.indeed.com":
+        return "/viewjob" in path or "/rc/clk" in path
+    if host == "jobs.talentics.id":
+        return path.startswith("/jobs/") and path != "/jobs"
+    if host == "topkarir.com":
+        return "/lowongan/" in path and path != "/lowongan"
     return False
 
 VACANCY_SIGNALS = (
