@@ -242,49 +242,41 @@ def prospect_score(title: str, text: str, category: str, company_tier_value: str
 
 def search_once() -> list[dict]:
     now = datetime.now().astimezone()
+    # Broad queries: do not require "gmail" here. Gmail is detected after
+    # opening the result page; otherwise valid vacancies are filtered out too early.
     queries = [
-        f'"{LOCATION_QUERY}" lowongan marketing gmail',
-        f'"{LOCATION_QUERY}" lowongan "digital marketing" gmail',
-        f'"{LOCATION_QUERY}" lowongan "social media" gmail',
-        f'"{LOCATION_QUERY}" lowongan "content creator" gmail',
-        f'"{LOCATION_QUERY}" lowongan brand gmail',
-        f'"{LOCATION_QUERY}" lowongan "marketing communication" gmail',
-        f'"{LOCATION_QUERY}" lowongan admin gmail',
-        f'"{LOCATION_QUERY}" lowongan accounting gmail',
-        f'"{LOCATION_QUERY}" lowongan finance gmail',
-        f'"{LOCATION_QUERY}" lowongan HRD gmail',
-        f'"{LOCATION_QUERY}" lowongan recruitment gmail',
-        f'"{LOCATION_QUERY}" lowongan purchasing gmail',
-        f'"{LOCATION_QUERY}" lowongan procurement gmail',
-        f'"{LOCATION_QUERY}" lowongan legal gmail',
-        f'"{LOCATION_QUERY}" lowongan secretary gmail',
-        f'"{LOCATION_QUERY}" lowongan operations gmail',
-        f'"{LOCATION_QUERY}" lowongan "back office" gmail',
-        f'"{LOCATION_QUERY}" lowongan "staff administrasi" gmail',
-        f'"{LOCATION_QUERY}" lowongan "customer service" gmail',
-        f'"{LOCATION_QUERY}" lowongan remote gmail',
-        f'"{LOCATION_QUERY}" lowongan hybrid gmail',
-
-        # Famous-company searches. The normal Gmail-only filter remains active.
-        f'"{LOCATION_QUERY}" lowongan Astra gmail',
-        f'"{LOCATION_QUERY}" lowongan "Astra International" gmail',
-        f'"{LOCATION_QUERY}" lowongan Unilever gmail',
-        f'"{LOCATION_QUERY}" lowongan "L\'Oreal" gmail',
-        f'"{LOCATION_QUERY}" lowongan Danone gmail',
-        f'"{LOCATION_QUERY}" lowongan EIGER gmail',
-        f'"{LOCATION_QUERY}" lowongan Telkom gmail',
-        f'"{LOCATION_QUERY}" lowongan BCA gmail',
-        f'"{LOCATION_QUERY}" lowongan "Bank Mandiri" gmail',
-        f'"{LOCATION_QUERY}" lowongan BRI gmail',
-        f'"{LOCATION_QUERY}" lowongan BNI gmail',
-        f'"{LOCATION_QUERY}" lowongan Grab gmail',
-        f'"{LOCATION_QUERY}" lowongan Gojek gmail',
-        f'"{LOCATION_QUERY}" lowongan Tokopedia gmail',
-        f'"{LOCATION_QUERY}" lowongan Shopee gmail',
-        f'"{LOCATION_QUERY}" lowongan Traveloka gmail',
-        f'"{LOCATION_QUERY}" lowongan "Dale Carnegie" gmail',
+        f'"{LOCATION_QUERY}" lowongan marketing',
+        f'"{LOCATION_QUERY}" loker marketing',
+        f'"{LOCATION_QUERY}" lowongan "digital marketing"',
+        f'"{LOCATION_QUERY}" lowongan "performance marketing"',
+        f'"{LOCATION_QUERY}" lowongan "social media"',
+        f'"{LOCATION_QUERY}" lowongan "content creator"',
+        f'"{LOCATION_QUERY}" lowongan brand',
+        f'"{LOCATION_QUERY}" lowongan "marketing communication"',
+        f'"{LOCATION_QUERY}" lowongan KOL influencer',
+        f'"{LOCATION_QUERY}" lowongan SEO SEM',
+        f'"{LOCATION_QUERY}" lowongan CRM',
+        f'"{LOCATION_QUERY}" lowongan partnership growth',
+        f'"{LOCATION_QUERY}" lowongan admin',
+        f'"{LOCATION_QUERY}" loker administrasi',
+        f'"{LOCATION_QUERY}" lowongan accounting finance',
+        f'"{LOCATION_QUERY}" lowongan HRD recruitment',
+        f'"{LOCATION_QUERY}" lowongan purchasing procurement',
+        f'"{LOCATION_QUERY}" lowongan legal secretary',
+        f'"{LOCATION_QUERY}" lowongan operations',
+        f'"{LOCATION_QUERY}" lowongan "customer service"',
+        f'"{LOCATION_QUERY}" lowongan "back office"',
+        f'"{LOCATION_QUERY}" lowongan sales marketing',
+        f'"{LOCATION_QUERY}" lowongan "business development"',
+        f'"{LOCATION_QUERY}" lowongan "general affair"',
+        f'"{LOCATION_QUERY}" lowongan remote',
+        f'"{LOCATION_QUERY}" lowongan hybrid',
+        f'site:glints.com "{LOCATION_QUERY}" lowongan',
+        f'site:id.indeed.com "{LOCATION_QUERY}" lowongan',
+        f'site:jobstreet.co.id "{LOCATION_QUERY}" lowongan',
+        f'site:kalibrr.com "{LOCATION_QUERY}" lowongan',
+        f'site:karir.com "{LOCATION_QUERY}" lowongan',
         f'"{LOCATION_QUERY}" lowongan Astra',
-        f'"{LOCATION_QUERY}" lowongan "Astra International"',
         f'"{LOCATION_QUERY}" lowongan Unilever',
         f'"{LOCATION_QUERY}" lowongan Danone',
         f'"{LOCATION_QUERY}" lowongan EIGER',
@@ -298,14 +290,7 @@ def search_once() -> list[dict]:
         f'"{LOCATION_QUERY}" lowongan Tokopedia',
         f'"{LOCATION_QUERY}" lowongan Shopee',
         f'"{LOCATION_QUERY}" lowongan Traveloka',
-
-        f'site:glints.com "{LOCATION_QUERY}" lowongan gmail',
-        f'site:id.indeed.com "{LOCATION_QUERY}" lowongan gmail',
-        f'site:jobstreet.co.id "{LOCATION_QUERY}" lowongan gmail',
-        f'site:kalibrr.com "{LOCATION_QUERY}" gmail',
-        f'site:karir.com "{LOCATION_QUERY}" gmail',
     ]
-
     rows: list[dict] = []
     seen: set[str] = set()
 
@@ -313,9 +298,6 @@ def search_once() -> list[dict]:
         for query_index, query in enumerate(queries, start=1):
             items = []
             last_error = None
-
-            # Use one backend at a time. Multi-backend racing can amplify rate
-            # limits; current ddgs versions document many individual providers.
             for backend_name in SEARCH_BACKENDS:
                 try:
                     items = ddgs.text(
@@ -335,7 +317,6 @@ def search_once() -> list[dict]:
                         f"backend={backend_name} | {type(exc).__name__}: {exc}"
                     )
                     time.sleep(SEARCH_RETRY_DELAY_SECONDS)
-
             if not items and last_error is not None:
                 print(f"SEARCH SKIPPED | query={query_index}/{len(queries)}")
             time.sleep(SEARCH_DELAY_SECONDS)
@@ -348,17 +329,7 @@ def search_once() -> list[dict]:
                     continue
 
                 search_text = normalize(f"{title} {snippet}")
-                page_text = ""
-                email = extract_gmail(search_text)
-                if not email:
-                    page_text = fetch_page(url)
-                    email = extract_gmail(page_text)
-
-                full_text = normalize(f"{search_text} {page_text}")
-                if LOCATION_QUERY.lower() not in full_text.lower():
-                    continue
-
-                title_and_snippet = normalize(f"{title} {search_text}").lower()
+                title_and_snippet = search_text.lower()
                 vacancy_signals = (
                     "lowongan", "lowong", "loker", "job vacancy", "vacancy",
                     "career", "careers", "recruitment", "hiring", "apply",
@@ -367,14 +338,21 @@ def search_once() -> list[dict]:
                     "admin", "accounting", "finance", "hr", "hrd", "legal",
                     "secretary", "operations", "customer service", "marketing",
                     "content", "social media", "sales", "procurement",
-                    "purchasing", "warehouse", "logistics",
+                    "purchasing", "warehouse", "logistics", "brand", "seo", "kol",
+                    "partnership", "business development",
                 )
                 if not any(signal in title_and_snippet for signal in vacancy_signals):
                     continue
 
-                # Famous-company roles may use an official ATS/career portal
-                # instead of Gmail. Keep them in the Sheet for tracking, but
-                # leave recipient_email empty so they can never be emailed here.
+                page_text = fetch_page(url)
+                full_text = normalize(f"{search_text} {page_text}")
+                if LOCATION_QUERY.lower() not in full_text.lower():
+                    continue
+
+                email = extract_gmail(search_text)
+                if not email:
+                    email = extract_gmail(page_text)
+
                 extracted_company = extract_company(title, full_text)
                 famous_without_gmail = (
                     company_tier(extracted_company, title) == "famous" and not email
@@ -388,14 +366,18 @@ def search_once() -> list[dict]:
                 if not category:
                     continue
 
-                fresh, published, date_status = freshness(full_text, str(item.get("date", "")), now)
+                fresh, published, date_status = freshness(
+                    full_text, str(item.get("date", "")), now
+                )
                 if not fresh:
                     continue
 
                 tier = company_tier(extracted_company, title)
                 published_dt = parse_date(published, now) if published else None
                 age_days = max(0, (now.date() - published_dt.date()).days) if published_dt else ""
-                score, score_reason = prospect_score(title, full_text, category, tier, email, published, date_status, domain(url))
+                score, score_reason = prospect_score(
+                    title, full_text, category, tier, email, published, date_status, domain(url)
+                )
                 job_id = make_id(title, email, url)
                 if job_id in seen:
                     continue
@@ -404,7 +386,7 @@ def search_once() -> list[dict]:
                 rows.append({
                     "job_id": job_id,
                     "job_title": title[:180],
-                    "company": extract_company(title, full_text) or "Perusahaan",
+                    "company": extracted_company or "Perusahaan",
                     "company_tier": tier,
                     "category": category,
                     "work_mode": work_mode(full_text),
