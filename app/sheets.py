@@ -14,7 +14,7 @@ SCOPES = [
 
 HEADERS = [
     "job_id", "job_title", "company", "category", "work_mode", "location",
-    "source_url", "published_date", "deadline_date", "recipient_email",
+    "source_url", "published_date", "deadline_date", "recipient_email", "candidate_headline",
     "fit_score", "fit_reason", "subject", "body", "status", "send_approved",
     "discovered_at", "sent_at", "error", "notes",
 ]
