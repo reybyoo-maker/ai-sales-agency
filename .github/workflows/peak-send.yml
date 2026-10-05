@@ -1,0 +1,43 @@
+name: Peak Gmail Job Sender
+
+on:
+  schedule:
+    # 06:30, 07:30, 08:30, 09:30, 10:30, 13:30 WIB setiap hari.
+    - cron: '30 23,0,1,2,3,4,6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: bandung-job-sender
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir --timeout 60 -r requirements.txt
+
+      - name: Send rows marked KIRIM
+        env:
+          TIMEZONE: Asia/Jakarta
+          GMAIL_ADDRESS: 'reybyoo@gmail.com'
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CV_PDF_BASE64: ${{ secrets.CV_PDF_BASE64 }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          SHEET_TAB: 'Job Applications'
+          PROFILE_TAB: 'Candidate Profile'
+          DAILY_SEND_LIMIT: '100'
+          MAX_SEND_PER_RUN: '20'
+          SEND_DELAY_SECONDS: '45'
+        run: python -u -m app.send_pending
