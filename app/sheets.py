@@ -19,6 +19,38 @@ HEADERS = [
     "discovered_at", "sent_at", "error", "notes",
 ]
 
+PROFILE_HEADERS = ["key", "value"]
+
+def get_profile_ws():
+    raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+    sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip()
+    tab = os.getenv("PROFILE_TAB", "Candidate Profile").strip()
+    if not raw or not sheet_id:
+        raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_SHEET_ID belum diisi")
+    creds = Credentials.from_service_account_info(json.loads(raw), scopes=SCOPES)
+    sh = gspread.authorize(creds).open_by_key(sheet_id)
+    try:
+        ws = sh.worksheet(tab)
+    except gspread.WorksheetNotFound:
+        ws = sh.add_worksheet(title=tab, rows=20, cols=2)
+    if not ws.row_values(1):
+        ws.append_row(PROFILE_HEADERS, value_input_option="USER_ENTERED")
+        defaults = [
+            ["candidate_name", "REYNALDI KURNIA SONJAYA"],
+            ["headline", "Leader | Mentor | Marketing Officer | Data Analyst | Digital Marketing | Promotion | Influencer"],
+            ["email", "reybyoo@gmail.com"],
+            ["whatsapp", "6287813871926"],
+            ["ai_project", "Currently developing an Agent Agency AI project to simplify and improve work processes."],
+        ]
+        for row in defaults:
+            ws.append_row(row, value_input_option="USER_ENTERED")
+    return ws
+
+def get_profile() -> dict[str, str]:
+    ws = get_profile_ws()
+    rows = ws.get_all_records()
+    return {str(r.get("key", "")).strip(): str(r.get("value", "")).strip() for r in rows if r.get("key")}
+
 def get_ws():
     raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
     sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip()
