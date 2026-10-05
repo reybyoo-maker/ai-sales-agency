@@ -24,7 +24,7 @@ from .config import (
 MONTHS = {
     "jan": 1, "januari": 1, "january": 1, "feb": 2, "februari": 2, "february": 2,
     "mar": 3, "maret": 3, "march": 3, "apr": 4, "april": 4, "mei": 5, "may": 5,
-    "jun": 6, "juni": 6, "june": 7, "jul": 7, "juli": 7, "july": 7,
+    "jun": 6, "juni": 6, "june": 6, "jul": 7, "juli": 7, "july": 7,
     "agu": 8, "agustus": 8, "aug": 8, "sep": 9, "september": 9,
     "okt": 10, "oktober": 10, "oct": 10, "october": 10, "nov": 11, "november": 11,
     "des": 12, "desember": 12, "dec": 12, "december": 12,
