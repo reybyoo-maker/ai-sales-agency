@@ -4,10 +4,10 @@ import csv
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from .config import AI_PROJECT_NOTE, CANDIDATE_HEADLINE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, TIMEZONE
+from .config import AI_PROJECT_NOTE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, TIMEZONE
 from .discovery import search_once
 from .job_agent import analyze_job, load_cv_text
-from .sheets import append_job, get_profile, get_ws, records
+from .sheets import append_job, get_profile, get_ws
 
 def now_iso() -> str:
     return datetime.now(ZoneInfo(TIMEZONE)).isoformat()
@@ -27,7 +27,7 @@ def save_rows(rows: list[dict]) -> None:
 
 def main() -> None:
     print('========================================')
-    print('BANDUNG JOB HUNTER | CV MATCH + QUEUE')
+    print('BANDUNG JOB HUNTER | DISCOVERY + DRAFT')
     print('========================================')
 
     rows = load_rows()
@@ -37,17 +37,21 @@ def main() -> None:
 
     try:
         cv_text = load_cv_text()
-        profile = get_profile()
     except Exception as exc:
         print(f'CV ERROR: {exc}')
         return
 
-    ws = None
-    if get_ws:
-        try:
-            ws = get_ws()
-        except Exception as exc:
-            print(f'SHEETS WARNING: {exc}')
+    try:
+        profile = get_profile()
+    except Exception as exc:
+        print(f'PROFILE ERROR: {exc}')
+        return
+
+    try:
+        ws = get_ws()
+    except Exception as exc:
+        print(f'SHEETS ERROR: {exc}')
+        return
 
     processed = 0
     added = 0
@@ -60,13 +64,11 @@ def main() -> None:
 
         try:
             result = analyze_job(job, cv_text, profile)
-                status = 'SIAP_KIRIM' if job.get('recipient_email') else 'WATCHLIST'
+            status = 'SIAP_KIRIM' if job.get('recipient_email') else 'WATCHLIST'
             row = {
                 **job,
                 'candidate_headline': profile.get('headline', ''),
                 'ai_project_note': profile.get('ai_project', AI_PROJECT_NOTE),
-                'prospect_score': job.get('prospect_score', 0),
-                'score_reason': job.get('score_reason', ''),
                 'subject': str(result.get('subject', '')).strip(),
                 'body': str(result.get('body', '')).strip(),
                 'status': status,
@@ -78,18 +80,17 @@ def main() -> None:
             rows.append(row)
             existing.add(job['job_id'])
             added += 1
-            if ws:
-                try:
-                    append_job(ws, row)
-                except Exception as exc:
-                    print(f'SHEETS APPEND WARNING: {exc}')
-            print(f'{status} | {score} | {job["job_title"]} | {job["recipient_email"]}')
+            try:
+                append_job(ws, row)
+            except Exception as exc:
+                print(f'SHEETS APPEND WARNING: {exc}')
+            print(f'{status} | score={job.get("prospect_score",0)} | {job["job_title"]} | {job.get("recipient_email","")}')
         except Exception as exc:
             print(f'AI ERROR | {job["job_title"]} | {type(exc).__name__}: {exc}')
 
     save_rows(rows)
-    print(f'QUEUED={added}')
-    print('DISCOVERY ONLY: rows with Gmail are SIAP_KIRIM; set status to KIRIM in Google Sheets to send at the next peak window.')
+    print(f'NEW_JOBS={added}')
+    print('Change status from SIAP_KIRIM to KIRIM in Google Sheets for jobs you want the sender to process at the next peak window.')
     print('========================================')
 
 if __name__ == '__main__':
