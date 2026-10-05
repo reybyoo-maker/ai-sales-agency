@@ -37,7 +37,7 @@ jobs:
           MAX_AGE_DAYS: '14'
           ALLOW_UNKNOWN_DATE: 'false'
           SEARCH_RESULTS_PER_QUERY: '10'
-          SEARCH_BACKENDS: 'auto'
+          SEARCH_BACKENDS: 'bing,brave'
           SEARCH_DELAY_SECONDS: '1.5'
           SEARCH_RETRY_DELAY_SECONDS: '6'
           MAX_DISCOVERED_PER_RUN: '300'
