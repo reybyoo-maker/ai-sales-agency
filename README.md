@@ -60,7 +60,7 @@ AI membuat body berbeda untuk setiap lowongan berdasarkan judul/isi posisi dan p
 Contoh subject:
 Lamaran [Nama Posisi] | [Nama Kandidat] | WA 6287813871926
 
-Bila relevan, body dapat menyebut project Agent Agency AI sebagai project yang sedang dikembangkan untuk membantu pekerjaan menjadi lebih mudah, terstruktur, dan efisien. Tidak boleh diposisikan sebagai pengalaman kerja fiktif.
+Bila relevan, body dapat menyebut project Agent Agency AI sebagai project yang sedang dikembangkan untuk membantu membuat pekerjaan lebih mudah, terstruktur, dan efisien. Tidak boleh diposisikan sebagai pengalaman kerja fiktif.
 
 CV PDF dilampirkan saat email dikirim.
 
@@ -74,8 +74,23 @@ Setiap run hanya memproses baris dengan status KIRIM dan recipient_email berakhi
 
 ## 6. Secrets GitHub
 
-Wajib diset:
-CV_PDF_BASE64
+GitHub Actions membatasi ukuran satu Secret. Karena CV PDF kamu menghasilkan Base64 sekitar 284 ribu karakter, konfigurasi ini memakai tujuh Secret untuk CV:
+CV_PDF_BASE64_1
+CV_PDF_BASE64_2
+CV_PDF_BASE64_3
+CV_PDF_BASE64_4
+CV_PDF_BASE64_5
+CV_PDF_BASE64_6
+CV_PDF_BASE64_7
+
+Jangan membuat secret CV_PDF_BASE64 berisi seluruh CV karena akan melewati batas ukuran.
+
+Untuk membagi CV secara otomatis:
+python scripts/prepare_cv_secret_parts.py /path/to/CV.pdf
+
+Script tersebut membuat cv_secret_part_1.txt sampai cv_secret_part_7.txt. Isi masing-masing file ditempel ke Secret dengan nama yang sesuai. Jangan commit file .txt tersebut ke repository.
+
+Secret lain yang wajib diset:
 GEMINI_API_KEY
 GOOGLE_SHEET_ID
 GOOGLE_SERVICE_ACCOUNT_JSON
