@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from .config import AI_PROJECT_NOTE, CANDIDATE_HEADLINE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, MIN_FIT_SCORE, TIMEZONE
 from .discovery import search_once
 from .job_agent import analyze_job, load_cv_text
-from .sheets import append_job, get_ws, records
+from .sheets import append_job, get_profile, get_ws, records
 
 def now_iso() -> str:
     return datetime.now(ZoneInfo(TIMEZONE)).isoformat()
@@ -37,6 +37,7 @@ def main() -> None:
 
     try:
         cv_text = load_cv_text()
+        profile = get_profile()
     except Exception as exc:
         print(f'CV ERROR: {exc}')
         return
@@ -58,7 +59,7 @@ def main() -> None:
         processed += 1
 
         try:
-            result = analyze_job(job, cv_text)
+            result = analyze_job(job, cv_text, profile)
             score = int(result.get('fit_score', 0) or 0)
             status = 'READY' if score >= MIN_FIT_SCORE and job.get('recipient_email') else ('READY_NO_GMAIL' if score >= MIN_FIT_SCORE else 'REJECTED_FIT')
             row = {
