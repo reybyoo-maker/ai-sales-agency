@@ -4,7 +4,7 @@ import csv
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from .config import CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, MIN_FIT_SCORE, TIMEZONE
+from .config import CANDIDATE_HEADLINE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, MIN_FIT_SCORE, TIMEZONE
 from .discovery import search_once
 from .job_agent import analyze_job, load_cv_text
 from .sheets import append_job, get_ws, records
