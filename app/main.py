@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from .config import AI_PROJECT_NOTE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, TIMEZONE
 from .discovery import search_once
 from .job_agent import analyze_job, load_cv_text
-from .sheets import append_job, get_profile, get_ws, records, update_row_by_job_id
+from .sheets import append_jobs, get_profile, get_ws, records, update_row_by_job_id
 
 def now_iso() -> str:
     return datetime.now(ZoneInfo(TIMEZONE)).isoformat()
@@ -65,10 +65,13 @@ def main() -> None:
         existing.add(job['job_id'])
         if source_url_key:
             existing_urls.add(source_url_key)
-        try:
-            append_job(ws, row)
-        except Exception as exc:
-            print(f'SHEETS APPEND ERROR | {job["job_id"]} | {exc}')
+
+    try:
+        append_jobs(ws, new_jobs)
+        if new_jobs:
+            print(f'SHEETS APPENDED={len(new_jobs)}')
+    except Exception as exc:
+        print(f'SHEETS APPEND BATCH ERROR | {type(exc).__name__}: {exc}')
 
     print(f'DISCOVERED={len(jobs)} NEW={len(new_jobs)}')
     save_rows(rows)
