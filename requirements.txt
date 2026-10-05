@@ -3,4 +3,4 @@ gspread>=6.2.1
 google-auth>=2.40.0
 requests>=2.32.3
 beautifulsoup4>=4.13.4
-ddgs>=9.0.0
+ddgs>=9.10.0
