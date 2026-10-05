@@ -14,6 +14,7 @@ SEARCH_RESULTS_PER_QUERY = int(os.getenv("SEARCH_RESULTS_PER_QUERY", "20"))
 SEARCH_BACKENDS = tuple(x.strip() for x in os.getenv("SEARCH_BACKENDS", "auto").split(",") if x.strip())
 SEARCH_DELAY_SECONDS = float(os.getenv("SEARCH_DELAY_SECONDS", "1.0"))
 SEARCH_RETRY_DELAY_SECONDS = float(os.getenv("SEARCH_RETRY_DELAY_SECONDS", "4"))
+FLYER_MAX_IMAGES = int(os.getenv("FLYER_MAX_IMAGES", "6"))
 MAX_DISCOVERED_PER_RUN = int(os.getenv("MAX_DISCOVERED_PER_RUN", "150"))
 MAX_AI_PER_RUN = int(os.getenv("MAX_AI_PER_RUN", "50"))
 DAILY_SEND_LIMIT = int(os.getenv("DAILY_SEND_LIMIT", "100"))
@@ -100,7 +101,7 @@ OPEN_BLOCK_TERMS = (
 CSV_FIELDS = [
     "job_id", "found_at", "published_date", "deadline_date", "age_days",
     "job_title", "company", "company_tier", "category", "work_mode", "location",
-    "source_url", "source_domain", "application_method", "recipient_email",
+    "source_url", "flyer_image_urls", "source_domain", "application_method", "recipient_email",
     "prospect_score", "score_reason", "candidate_headline", "ai_project_note",
     "subject", "body", "status", "sent_at", "send_error", "notes",
 ]
