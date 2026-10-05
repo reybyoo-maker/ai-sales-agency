@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 from typing import Any
 
 import requests
@@ -115,15 +116,30 @@ Return JSON only.
             f"Catatan sistem: {flyer_checked} gambar lowongan berhasil diambil. Baca semuanya yang relevan sebelum membuat output."
         )
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_json_schema=schema,
-            temperature=0.25,
-        ),
-    )
+    last_exc = None
+    response = None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=schema,
+                    temperature=0.25,
+                ),
+            )
+            break
+        except Exception as exc:
+            last_exc = exc
+            message = str(exc)
+            if "503" not in message and "429" not in message and "UNAVAILABLE" not in message and "RESOURCE_EXHAUSTED" not in message:
+                raise
+            wait_seconds = 5 * (attempt + 1)
+            print(f"GEMINI RETRY | attempt={attempt + 1}/3 | waiting={wait_seconds}s | {type(exc).__name__}: {exc}")
+            time.sleep(wait_seconds)
+    if response is None:
+        raise RuntimeError(f"Gemini gagal setelah 3 percobaan: {last_exc}")
     parsed = getattr(response, "parsed", None)
     if isinstance(parsed, dict):
         return parsed
