@@ -24,7 +24,7 @@ Body menyebut CV terlampir dan WhatsApp 6287813871926.
 Tab `Job Applications` otomatis membuat/menambahkan header: job_id, job_title, company, company_tier, category, work_mode, location, source_url, published_date, deadline_date, recipient_email, candidate_headline, ai_project_note, fit_score, fit_reason, subject, body, status, send_approved, dan timestamp. Jadi kolom `candidate_headline` akan terisi otomatis dengan headline CV.
 
 ## Jadwal
-GitHub Actions menjalankan discovery beberapa kali pada pagi hari kerja WIB. Jadwal UTC `0,2,4` setara sekitar 07:00, 09:00, dan 11:00 WIB. Benchmark 2026 yang tersedia cenderung menempatkan Selasa-Kamis pagi sebagai window yang baik, tetapi timing bukan jaminan diterima dan kualitas kecocokan tetap faktor utama.
+GitHub Actions menjalankan discovery setiap hari pada beberapa window pagi/siang WIB: sekitar 06:00, 08:00, 10:00, dan 13:00 WIB. Benchmark 2026 yang tersedia cenderung menempatkan Selasa-Kamis pagi sebagai window yang baik, tetapi timing bukan jaminan diterima dan kualitas kecocokan tetap faktor utama.
 
 ## Secrets
 - `CV_PDF_BASE64` — CV PDF disimpan sebagai GitHub Actions secret, bukan di repository publik.
