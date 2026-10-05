@@ -10,172 +10,93 @@ from ddgs import DDGS
 from .web import clean_email, clean_phone, snapshot
 
 
-PROVINCES = [
-    "Aceh",
-    "Sumatera Utara",
-    "Sumatera Barat",
-    "Riau",
-    "Kepulauan Riau",
-    "Jambi",
-    "Sumatera Selatan",
-    "Bengkulu",
-    "Lampung",
-    "Bangka Belitung",
-    "Banten",
-    "DKI Jakarta",
-    "Jawa Barat",
-    "Jawa Tengah",
-    "DI Yogyakarta",
-    "Jawa Timur",
-    "Bali",
-    "Nusa Tenggara Barat",
-    "Nusa Tenggara Timur",
-    "Kalimantan Barat",
-    "Kalimantan Tengah",
-    "Kalimantan Selatan",
-    "Kalimantan Timur",
-    "Kalimantan Utara",
-    "Sulawesi Utara",
-    "Sulawesi Tengah",
-    "Sulawesi Selatan",
-    "Sulawesi Tenggara",
-    "Gorontalo",
-    "Sulawesi Barat",
-    "Maluku",
-    "Maluku Utara",
-    "Papua",
-    "Papua Barat",
-    "Papua Selatan",
-    "Papua Tengah",
-    "Papua Pegunungan",
-    "Papua Barat Daya",
+# ============================================================
+# TARGET INTENT
+# ============================================================
+
+INTENT_QUERIES = [
+    '"B2B lead generation" "looking for"',
+    '"B2B lead generation" "need"',
+    '"email list building" "looking for"',
+    '"email list building" "need"',
+    '"B2B leads" "looking for"',
+    '"B2B leads" "need"',
+    '"lead research" "looking for"',
+    '"lead research" "need"',
+    '"prospect research" "looking for"',
+    '"prospect research" "need"',
+    '"data enrichment" "looking for"',
+    '"data enrichment" "need"',
+    '"appointment setting" "looking for"',
+    '"appointment setting" "need"',
+    '"lead researcher" "hiring"',
+    '"lead generation specialist" "hiring"',
+    'site:upwork.com/freelance-jobs/ "B2B Lead Generation"',
+    'site:upwork.com/freelance-jobs/ "Email List Building"',
+    'site:upwork.com/freelance-jobs/ "Lead Research"',
+    'site:freelancer.com/projects/ "B2B Lead Generation"',
+    'site:freelancer.com/projects/ "Email List"',
+    'site:freelancer.com/projects/ "Lead Generation"',
+    'site:guru.com/jobs/ "Lead Generation"',
+    'site:guru.com/jobs/ "Email List"',
+    'site:onlinejobs.ph/jobseekers/job/ "Lead Generation"',
+    'site:onlinejobs.ph/jobseekers/job/ "Email Outreach"',
 ]
 
 
-NICHES = [
-    "cafe",
-    "coffee shop",
-    "barbershop",
-    "salon",
-    "gym",
-    "fitness",
-    "klinik kecantikan",
-    "spa",
-    "laundry",
-    "wedding organizer",
-    "event organizer",
-    "fotografer",
-    "videografer",
-    "studio foto",
-    "travel agent",
-    "tour travel",
-    "kursus",
-    "les privat",
-    "bengkel",
-    "car detailing",
-    "MUA",
-    "catering",
-    "bakery",
-    "fashion boutique",
-    "toko bunga",
-    "property agent",
-    "jasa interior",
-    "kontraktor",
-    "cleaning service",
-    "pet shop",
-    "klinik gigi",
-    "dealer mobil",
-    "sewa mobil",
-    "rental mobil",
-]
+# ============================================================
+# DOMAIN YANG TIDAK KITA ANGGAP SEBAGAI WEBSITE BISNIS
+# ============================================================
 
-
-# Domain yang hampir pasti bukan bisnis individual target kita.
-BLOCKED = {
-    "tripadvisor.com",
-    "fresha.com",
-    "yelp.com",
-    "wanderlog.com",
-    "bridestory.com",
-    "tempat.info",
-    "rekomended.com",
-    "idalamat.com",
-    "indonesiaknowledge.com",
-    "beautynailhairsalons.com",
-    "laundry.co.id",
-    "laundryindonesia.com",
-    "barberhead.com",
-    "localoria.com",
-    "yellowpages.co.id",
-    "indotrading.com",
-    "wikipedia.org",
-    "kompas.com",
-    "detik.com",
-    "tempo.co",
-    "tokopedia.com",
-    "shopee.co.id",
-    "lazada.co.id",
-    "traveloka.com",
-    "gofood.co.id",
-    "grab.com",
+BLOCKED_DOMAINS = {
     "facebook.com",
+    "instagram.com",
+    "linkedin.com",
     "youtube.com",
     "tiktok.com",
-    "linkedin.com",
-    "instagram.com",
-    "linktr.ee",
-    "seo-for-jobs.info",
-    "superlocal.id",
-    "cari.co",
-    "menukuliner.net",
-    "qraved.com",
+    "wikipedia.org",
+    "pinterest.com",
+    "reddit.com",
+    "quora.com",
 }
 
 
-BAD_TITLE = (
-    "rekomendasi",
-    "direktori",
+BAD_TITLES = (
     "directory",
-    "best ",
-    "daftar ",
-    "list ",
-    "near me",
+    "direktori",
     "review",
     "reviews",
     "ranking",
-    "top ",
-    "harga ",
-    "artikel",
-    "news",
-    "berita",
-    "wikipedia",
-    "lowongan",
-    "job",
-    "jobs",
-)
-
-
-BAD_TEXT = (
-    "directory",
-    "direktori",
-    "list of",
-    "daftar 10",
-    "daftar 20",
+    "top 10",
+    "top 20",
+    "best ",
     "rekomendasi",
-    "comparison",
-    "compare prices",
-    "review tempat",
-    "lowongan kerja",
-    "vacancy",
-    "loker",
 )
 
 
-def norm(v: str) -> str:
-    return re.sub(r"\s+", " ", v or "").strip()
+BAD_PATHS = (
+    "/directory",
+    "/direktori",
+    "/category/",
+    "/kategori/",
+    "/tag/",
+    "/search",
+)
 
 
-def dom(url: str) -> str:
+# ============================================================
+# HELPER
+# ============================================================
+
+def normalize(value: str) -> str:
+    return re.sub(
+        r"\s+",
+        " ",
+        value or "",
+    ).strip()
+
+
+def domain(url: str) -> str:
     try:
         return (
             urlparse(url)
@@ -188,63 +109,17 @@ def dom(url: str) -> str:
         return ""
 
 
-def blocked(url: str) -> bool:
-    d = dom(url)
+def is_blocked(url: str) -> bool:
+    current = domain(url)
 
-    if not d:
+    if not current:
         return True
 
     return any(
-        d == x or d.endswith("." + x)
-        for x in BLOCKED
+        current == blocked
+        or current.endswith("." + blocked)
+        for blocked in BLOCKED_DOMAINS
     )
-
-
-def likely_business(
-    title: str,
-    href: str,
-    body: str,
-) -> bool:
-
-    if not href.startswith(("http://", "https://")):
-        return False
-
-    if blocked(href):
-        return False
-
-    if not title.strip():
-        return False
-
-    title_lower = title.lower()
-    body_lower = body.lower()
-
-    if any(x in title_lower for x in BAD_TITLE):
-        return False
-
-    if any(x in body_lower for x in BAD_TEXT):
-        return False
-
-    # Hindari URL yang jelas merupakan halaman directory/listing.
-    path = urlparse(href).path.lower()
-
-    bad_path_words = (
-        "/directory",
-        "/direktori",
-        "/listing",
-        "/category/",
-        "/kategori/",
-        "/tag/",
-        "/search",
-        "/jobs/",
-        "/lowongan/",
-        "/blog/",
-        "/artikel/",
-    )
-
-    if any(x in path for x in bad_path_words):
-        return False
-
-    return True
 
 
 def extract_email(text: str) -> str:
@@ -259,7 +134,9 @@ def extract_email(text: str) -> str:
     if not match:
         return ""
 
-    return clean_email(match.group(0))
+    return clean_email(
+        match.group(0)
+    )
 
 
 def extract_phone(text: str) -> str:
@@ -274,175 +151,244 @@ def extract_phone(text: str) -> str:
     if not match:
         return ""
 
-    return clean_phone(match.group(0))
+    return clean_phone(
+        match.group(0)
+    )
 
 
-def extract_instagram(links: list[str] | None) -> str:
-    if not links:
-        return ""
+def intent_score(
+    title: str,
+    snippet: str,
+    query: str,
+) -> int:
 
-    for link in links:
-        if "instagram.com/" in link.lower():
-            return link.strip()
+    text = (
+        f"{title} "
+        f"{snippet} "
+        f"{query}"
+    ).lower()
 
-    return ""
+    score = 50
+
+    strong_signals = (
+        "we need",
+        "need ",
+        "looking for",
+        "hiring",
+        "hire",
+        "seeking",
+        "required",
+        "requirement",
+        "urgent",
+    )
+
+    service_signals = (
+        "b2b lead",
+        "lead generation",
+        "lead research",
+        "email list",
+        "email list building",
+        "prospect research",
+        "data enrichment",
+        "appointment setting",
+        "lead researcher",
+        "sales research",
+        "outreach",
+    )
+
+    if any(
+        signal in text
+        for signal in strong_signals
+    ):
+        score += 20
+
+    matching_services = sum(
+        1
+        for signal in service_signals
+        if signal in text
+    )
+
+    score += min(
+        matching_services * 5,
+        25,
+    )
+
+    if (
+        "upwork.com" in text
+        or "freelancer.com" in text
+        or "guru.com" in text
+        or "onlinejobs.ph" in text
+    ):
+        score += 5
+
+    return min(
+        score,
+        100,
+    )
 
 
-def fingerprint(p: dict) -> str:
-    s = "|".join(
-        (p.get(k) or "")
+def fingerprint(prospect: dict) -> str:
+    raw = "|".join(
+        str(
+            prospect.get(field, "")
+        )
         .strip()
         .lower()
         .rstrip("/")
-        for k in (
+        for field in (
             "business_name",
             "website",
-            "instagram",
             "email",
-            "phone",
+            "intent_url",
+            "intent_title",
         )
     )
 
     return hashlib.sha1(
-        s.encode("utf-8")
+        raw.encode("utf-8")
     ).hexdigest()
 
 
-def build_jobs():
-    """
-    Buat banyak variasi query supaya sumber prospect tidak
-    hanya bergantung pada satu pola pencarian.
-    """
-
-    jobs = []
-
-    for province in PROVINCES:
-        for niche in NICHES:
-
-            jobs.append(
-                (
-                    province,
-                    niche,
-                    f'"{niche}" "{province}" Indonesia '
-                    f'official website contact',
-                )
-            )
-
-            jobs.append(
-                (
-                    province,
-                    niche,
-                    f'"{niche}" "{province}" Indonesia '
-                    f'email WhatsApp',
-                )
-            )
-
-            jobs.append(
-                (
-                    province,
-                    niche,
-                    f'"{niche}" "{province}" Indonesia '
-                    f'kontak',
-                )
-            )
-
-    return jobs
-
+# ============================================================
+# DISCOVERY
+# ============================================================
 
 def discover(limit: int = 30) -> list[dict]:
-    """
-    Cari prospect bisnis individual.
-
-    limit:
-        jumlah maksimum prospect VALID yang dikembalikan.
-    """
 
     if limit <= 0:
         return []
 
-    jobs = build_jobs()
+    # Rotasi query setiap 30 menit supaya
+    # workflow otomatis tidak terus mencari query sama.
+    window = int(
+        time.time() // 1800
+    )
 
-    # Rotasi query berdasarkan waktu supaya setiap run
-    # tidak mencari kombinasi yang sama terus-menerus.
-    window = int(time.time() // 1800)
-
-    # Ambil 20 query tiap run.
     query_count = min(
         20,
-        len(jobs),
+        len(INTENT_QUERIES),
     )
 
     start = (
         window * query_count
-    ) % len(jobs)
+    ) % len(INTENT_QUERIES)
 
-    selected = [
-        jobs[
-            (start + i) % len(jobs)
+    selected_queries = [
+        INTENT_QUERIES[
+            (start + index)
+            % len(INTENT_QUERIES)
         ]
-        for i in range(query_count)
+        for index in range(query_count)
     ]
 
     print(
-        f"Discovery query count: "
-        f"{len(selected)}"
+        "========================================"
+    )
+    print(
+        "INTENT DISCOVERY"
+    )
+    print(
+        f"Query count: {len(selected_queries)}"
+    )
+    print(
+        "========================================"
     )
 
-    out: list[dict] = []
+    results_out: list[dict] = []
     seen: set[str] = set()
 
     with DDGS() as ddgs:
 
-        for query_index, (
-            province,
-            niche,
-            query,
-        ) in enumerate(
-            selected,
+        for query_index, query in enumerate(
+            selected_queries,
             start=1,
         ):
 
             print(
-                f"[Discovery {query_index}/"
-                f"{len(selected)}] "
-                f"{query}"
+                f"\n[Intent {query_index}/"
+                f"{len(selected_queries)}]"
+            )
+
+            print(
+                f"SEARCH: {query}"
             )
 
             try:
-                results = ddgs.text(
+
+                search_results = ddgs.text(
                     query,
                     max_results=10,
                 )
 
             except Exception as exc:
+
                 print(
-                    f"DISCOVERY ERROR "
+                    "SEARCH ERROR: "
                     f"{type(exc).__name__}: {exc}"
                 )
+
                 continue
 
-            for r in results or []:
+            for item in search_results or []:
 
-                title = norm(
-                    r.get("title", "")
+                title = normalize(
+                    item.get(
+                        "title",
+                        "",
+                    )
                 )
 
-                href = norm(
-                    r.get("href", "")
+                href = normalize(
+                    item.get(
+                        "href",
+                        "",
+                    )
                 )
 
-                snippet = norm(
-                    r.get("body", "")
+                snippet = normalize(
+                    item.get(
+                        "body",
+                        "",
+                    )
                 )
 
-                if not likely_business(
-                    title,
-                    href,
-                    snippet,
+                if not href:
+                    continue
+
+                if is_blocked(href):
+                    continue
+
+                title_lower = title.lower()
+
+                if any(
+                    bad in title_lower
+                    for bad in BAD_TITLES
                 ):
                     continue
 
-                # Coba ambil email + phone langsung dari snippet.
+                path = urlparse(
+                    href
+                ).path.lower()
+
+                if any(
+                    bad in path
+                    for bad in BAD_PATHS
+                ):
+                    continue
+
+                score = intent_score(
+                    title,
+                    snippet,
+                    query,
+                )
+
+                # Untuk tahap pertama kita simpan
+                # hanya intent yang cukup kuat.
+                if score < 65:
+                    continue
+
+                # Ambil halaman untuk mencari
+                # email bisnis publik bila ada.
                 email = extract_email(
                     snippet
                 )
@@ -451,110 +397,173 @@ def discover(limit: int = 30) -> list[dict]:
                     snippet
                 )
 
-                instagram = ""
+                website_title = title
+                website_text = ""
 
-                # Hanya buka website jika email belum
-                # tersedia dari hasil search.
-                if not email:
+                try:
 
-                    try:
-                        snap = snapshot(
-                            href
-                        )
-
-                    except Exception as exc:
-                        print(
-                            f"SNAPSHOT ERROR "
-                            f"{href}: "
-                            f"{type(exc).__name__}: {exc}"
-                        )
-                        continue
-
-                    if not snap.get("ok"):
-                        continue
-
-                    email = (
-                        (snap.get("emails") or [""])[0]
-                        or ""
+                    snap = snapshot(
+                        href
                     )
 
-                    phone = (
-                        phone
-                        or (
-                            (snap.get("phones") or [""])[0]
-                            if snap.get("phones")
-                            else ""
+                    if snap.get("ok"):
+
+                        website_title = normalize(
+                            snap.get(
+                                "title",
+                                "",
+                            )
+                            or title
                         )
-                    )
 
-                    instagram = extract_instagram(
-                        snap.get("links") or []
-                    )
+                        website_text = normalize(
+                            snap.get(
+                                "text",
+                                "",
+                            )
+                        )[:5000]
 
-                # Kalau email masih kosong, prospect
-                # belum cukup layak untuk outreach.
-                if not email:
-                    continue
+                        if not email:
+
+                            emails = (
+                                snap.get(
+                                    "emails"
+                                )
+                                or []
+                            )
+
+                            if emails:
+                                email = emails[0]
+
+                        if not phone:
+
+                            phones = (
+                                snap.get(
+                                    "phones"
+                                )
+                                or []
+                            )
+
+                            if phones:
+                                phone = phones[0]
+
+                except Exception as exc:
+
+                    print(
+                        "SNAPSHOT WARNING: "
+                        f"{href} | "
+                        f"{type(exc).__name__}: {exc}"
+                    )
 
                 email = clean_email(
                     email
                 )
 
-                if not email:
-                    continue
+                phone = clean_phone(
+                    phone
+                )
 
-                if phone:
-                    phone = clean_phone(
-                        phone
-                    )
+                # Untuk intent source yang merupakan
+                # job marketplace, jangan menganggap
+                # judul job sebagai nama perusahaan.
+                #
+                # Jika website/title belum menunjukkan
+                # nama perusahaan, kita simpan title
+                # sebagai identifier sementara.
+                business_name = (
+                    website_title
+                    or title
+                    or "Unknown Buyer"
+                )
 
                 item = {
-                    "business_name": title,
-                    "niche": niche,
+                    "business_name": business_name,
+                    "niche": "B2B Lead Generation",
                     "city": "",
-                    "province": province,
+                    "province": "",
                     "website": href,
-                    "instagram": instagram,
+                    "instagram": "",
                     "email": email,
                     "phone": phone,
                     "source_url": href,
+
+                    # Field intent tetap dikembalikan
+                    # walaupun sementara Sheet lama
+                    # belum punya kolom terpisah.
+                    "intent_type": "B2B Lead Generation",
+                    "intent_source": domain(href),
+                    "intent_url": href,
+                    "intent_title": title,
+                    "intent_date": "",
+                    "intent_budget": "",
+                    "intent_score": score,
+
+                    "website_title": website_title,
+                    "website_text": website_text,
+
                     "audit_score": "",
                     "audit_summary": "",
-                    "outreach_status": "NEW",
+                    "outreach_status": (
+                        "NEW"
+                        if email
+                        else "NO_EMAIL"
+                    ),
                     "outreach_at": "",
                     "wa_link": "",
                     "message_subject": "",
                     "message_body": "",
-                    "notes": (
-                        f"Source query: {query}; "
-                        f"snippet: {snippet[:500]}"
-                    ),
+                    "email_opt_in": "",
                     "opt_out": "",
+
+                    "notes": (
+                        "INTENT DISCOVERY | "
+                        f"query={query} | "
+                        f"intent_score={score} | "
+                        f"title={title} | "
+                        f"snippet={snippet[:700]}"
+                    ),
                 }
 
-                fp = fingerprint(item)
+                fp = fingerprint(
+                    item
+                )
 
                 if fp in seen:
                     continue
 
                 seen.add(fp)
-                out.append(item)
-
-                print(
-                    f"FOUND: {title} | "
-                    f"{email}"
+                results_out.append(
+                    item
                 )
 
-                if len(out) >= limit:
+                print(
+                    "FOUND INTENT: "
+                    f"{title} | "
+                    f"score={score} | "
+                    f"email={email or 'NO EMAIL'}"
+                )
+
+                if (
+                    len(results_out)
+                    >= limit
+                ):
                     print(
-                        f"Discovery target reached: "
-                        f"{limit}"
+                        f"\nIntent target reached: {limit}"
                     )
-                    return out
+                    return results_out
 
     print(
-        f"Discovery finished: "
-        f"{len(out)} valid prospects"
+        "\n========================================"
+    )
+    print(
+        "INTENT DISCOVERY FINISHED"
+    )
+    print(
+        f"Valid intent prospects: "
+        f"{len(results_out)}"
+    )
+    print(
+        "========================================"
     )
 
-    return out
+    return results_out
