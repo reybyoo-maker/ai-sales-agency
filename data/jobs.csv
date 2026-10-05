@@ -1,1 +1,1 @@
-job_id,job_title,company,category,work_mode,location,source_url,source_domain,published_date,deadline_date,date_status,recipient_email,fit_score,fit_reason,subject,body,status,send_approved,discovered_at,sent_at,error,notes
+job_id,job_title,company,company_tier,category,work_mode,location,source_url,source_domain,published_date,deadline_date,date_status,recipient_email,candidate_headline,ai_project_note,fit_score,fit_reason,subject,body,status,send_approved,discovered_at,sent_at,error,notes
