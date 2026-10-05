@@ -93,12 +93,14 @@ def main() -> None:
                 ai_project_note=profile.get('ai_project', AI_PROJECT_NOTE),
                 subject=str(result.get('subject', '')).strip(),
                 body=str(result.get('body', '')).strip(),
+                flyer_summary=str(result.get('flyer_summary', '')).strip(),
                 status=status,
             )
             job['candidate_headline'] = profile.get('headline', '')
             job['ai_project_note'] = profile.get('ai_project', AI_PROJECT_NOTE)
             job['subject'] = str(result.get('subject', '')).strip()
             job['body'] = str(result.get('body', '')).strip()
+            job['flyer_summary'] = str(result.get('flyer_summary', '')).strip()
             job['status'] = status
             drafted += 1
             print(f'DRAFTED | score={job.get("prospect_score",0)} | {job.get("job_title")} | {job.get("recipient_email","")}')
