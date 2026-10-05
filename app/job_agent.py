@@ -9,7 +9,7 @@ from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
-from .config import AI_PROJECT_NOTE, CANDIDATE_HEADLINE, CANDIDATE_WA, CV_PDF_BASE64, CV_PDF_PATH, GEMINI_API_KEY, GEMINI_MODEL, MIN_FIT_SCORE
+from .config import CV_PDF_BASE64, CV_PDF_PATH, GEMINI_API_KEY, GEMINI_MODEL, MIN_FIT_SCORE
 
 def load_cv_text() -> str:
     if CV_PDF_BASE64:
@@ -24,7 +24,7 @@ def load_cv_text() -> str:
         raise RuntimeError("CV PDF tidak memiliki teks yang cukup untuk dianalisis.")
     return text[:30000]
 
-def analyze_job(job: dict[str, Any], cv_text: str) -> dict[str, Any]:
+def analyze_job(job: dict[str, Any], cv_text: str, profile: dict[str, str]) -> dict[str, Any]:
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY belum diisi")
     client = genai.Client(api_key=GEMINI_API_KEY)
@@ -60,8 +60,8 @@ Aturan:
 4. Jangan mengarang pengalaman, skill, nama HR, gaji, atau fakta perusahaan.
 5. Buat email lamaran singkat, natural, profesional, dan spesifik ke posisi.
 6. Jangan menyebut sistem otomatis. Project Agent Agency AI boleh disebut secara natural bila relevan dengan posisi, sebagai project yang sedang dikembangkan untuk membantu membuat pekerjaan lebih mudah dan terstruktur. Jangan membuat klaim teknis yang tidak ada di CV.
-7. Subjek: Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA 6287813871926. Jaga maksimal sekitar 95 karakter; bila terlalu panjang, ringkas nama posisi/proyek tanpa menghapus identitas kandidat dan WA.
-8. Body harus menyebut CV terlampir dan WhatsApp 6287813871926. Tambahkan satu kalimat tentang project Agent Agency AI hanya bila relevan; jangan membuat email terasa seperti promosi.
+7. Subjek: Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA [WhatsApp]. Jaga maksimal sekitar 95 karakter; bila terlalu panjang, ringkas nama posisi/proyek tanpa menghapus identitas kandidat dan WA.
+8. Body harus menyebut CV terlampir dan WhatsApp yang ada di profil. Tambahkan satu kalimat tentang project Agent Agency AI hanya bila relevan; jangan membuat email terasa seperti promosi.
 9. Jangan menjamin diterima atau membuat klaim yang tidak ada di CV.
 10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.
 11. Jangan mengubah headline kandidat menjadi jabatan yang tidak ada di CV.
