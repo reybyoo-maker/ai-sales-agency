@@ -68,8 +68,9 @@ def analyze_job(job: dict[str, Any], cv_text: str, profile: dict[str, str]) -> d
             "subject": {"type": "string"},
             "body": {"type": "string"},
             "flyer_summary": {"type": "string"},
+            "gmail_application_email": {"type": "string"},
         },
-        "required": ["fit_reason", "application_angle", "subject", "body", "flyer_summary"],
+        "required": ["fit_reason", "application_angle", "subject", "body", "flyer_summary", "gmail_application_email"],
     }
     prompt = f"""
 Kamu adalah career application assistant.
@@ -105,6 +106,7 @@ Aturan:
 13. Buat subject yang menarik tetapi profesional. Prioritaskan nama posisi, nama kandidat, dan WA. Sebut Agent Agency AI di subject hanya jika tidak membuat subject terlalu panjang.
 14. flyer_summary harus merangkum fakta yang benar-benar terbaca dari flyer/gambar. Jika tidak ada flyer, tulis "Tidak ada informasi flyer yang dapat diverifikasi.".
 15. Jika flyer menampilkan email/nomor kontak/deadline yang berbeda dari halaman lowongan, catat perbedaannya di flyer_summary. Jangan diam-diam mengganti data sumber.
+16. Jika flyer/gambar benar-benar menampilkan alamat Gmail untuk menerima lamaran, masukkan alamat itu ke gmail_application_email. Jika tidak ada Gmail yang terlihat, isi string kosong. Jangan menebak.
 
 Return JSON only.
 """.strip()
