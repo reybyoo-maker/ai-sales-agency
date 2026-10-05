@@ -57,6 +57,24 @@ JOB_DOMAINS = {
 # BLOCKED WEBSITE DOMAINS
 # ============================================================
 
+TOOL_VENDOR_DOMAINS = {
+    "apollo.io",
+    "hubspot.com",
+    "salesforce.com",
+    "zoominfo.com",
+    "clay.com",
+    "hunter.io",
+    "lusha.com",
+    "rocketreach.co",
+    "skrapp.io",
+    "lemlist.com",
+    "instantly.ai",
+    "mailchimp.com",
+    "semrush.com",
+    "ahrefs.com",
+}
+
+
 BLOCKED_DOMAINS = {
     "facebook.com",
     "instagram.com",
@@ -214,6 +232,25 @@ BUSINESS_SUFFIXES = (
 # BAD COMPANY WORDS
 # ============================================================
 
+BLOCKED_COMPANY_NAMES = {
+    "apollo",
+    "hubspot",
+    "salesforce",
+    "zoominfo",
+    "clay",
+    "hunter",
+    "lusha",
+    "rocketreach",
+    "skrapp",
+    "lemlist",
+    "instantly",
+    "mailchimp",
+    "semrush",
+    "ahrefs",
+    "sales navigator",
+}
+
+
 BAD_COMPANY_EXACT = {
     "we",
     "we are",
@@ -355,6 +392,55 @@ def is_job_domain(
         )
         for item in JOB_DOMAINS
     )
+
+
+def is_tool_vendor_domain(
+    url: str,
+) -> bool:
+
+    current = domain(
+        url
+    )
+
+    if not current:
+        return False
+
+    return any(
+        current == item
+        or current.endswith(
+            "." + item
+        )
+        for item in TOOL_VENDOR_DOMAINS
+    )
+
+
+def is_specific_job_url(
+    url: str,
+) -> bool:
+
+    if not is_job_domain(url):
+        return False
+
+    parsed = urlparse(url)
+    path = parsed.path.lower().rstrip("/")
+
+    current = domain(url)
+
+    # Upwork category/search pages are not individual buyer jobs.
+    if current == "upwork.com":
+        return path.startswith("/freelance-jobs/apply/")
+
+    # Other job platforms: accept only detail-style paths.
+    if current == "freelancer.com":
+        return bool(re.match(r"^/projects/[^/]+", path))
+
+    if current == "guru.com":
+        return bool(re.match(r"^/jobs/[^/]+", path))
+
+    if current == "onlinejobs.ph":
+        return bool(re.match(r"^/jobseekers/job/\d+", path))
+
+    return False
 
 
 def is_blocked(
@@ -700,6 +786,9 @@ def company_name_score(
         return 0
 
     low = name.lower().strip()
+
+    if low in BLOCKED_COMPANY_NAMES:
+        return 0
 
     if low in BAD_COMPANY_EXACT:
         return 0
@@ -1134,6 +1223,11 @@ def extract_explicit_websites(
         ):
             continue
 
+        if is_tool_vendor_domain(
+            url
+        ):
+            continue
+
         if is_job_domain(
             url
         ):
@@ -1250,6 +1344,11 @@ def resolve_explicit_website(
         return result
 
     if is_blocked(
+        url
+    ):
+        return result
+
+    if is_tool_vendor_domain(
         url
     ):
         return result
@@ -1434,6 +1533,14 @@ def candidate_domain_score(
     ):
         return 0
 
+    if is_tool_vendor_domain(
+        candidate_url
+    ):
+        return 0
+
+    if normalize_token(company_name) in BLOCKED_COMPANY_NAMES:
+        return 0
+
     tokens = meaningful_company_tokens(
         company_name
     )
@@ -1449,13 +1556,30 @@ def candidate_domain_score(
         if token in low_domain
     )
 
-    # Domain harus punya hubungan dengan company.
-    if matched == 0:
+    # Domain harus punya hubungan langsung dengan company.
+    compact_company = normalize_token(company_name)
+    compact_domain = normalize_token(current_domain)
+    exact_brand_match = compact_domain == compact_company
+
+    if not exact_brand_match and matched == 0:
         return 0
 
-    score = 40 + (
-        matched * 25
+    if not exact_brand_match:
+        meaningful_matches = sum(
+            1
+            for token in tokens
+            if len(token) >= 5
+            and token in low_domain
+        )
+        if meaningful_matches == 0:
+            return 0
+
+    score = 50 + (
+        matched * 20
     )
+
+    if exact_brand_match:
+        score += 20
 
     text = (
         f"{title} {body}"
@@ -1883,7 +2007,7 @@ def discover(
                 # ONLY JOB / REQUEST DOMAINS
                 # =================================================
 
-                if not is_job_domain(
+                if not is_specific_job_url(
                     href
                 ):
                     continue
@@ -2081,51 +2205,47 @@ def discover(
                 # EXPLICIT WEBSITE FOUND IN JOB
                 # =================================================
 
-                if explicit_websites:
+                if (
+                    explicit_websites
+                    and company_name
+                    and company_name.lower()
+                    not in BLOCKED_COMPANY_NAMES
+                ):
 
                     selected_explicit = ""
 
-                    if company_name:
+                    tokens = meaningful_company_tokens(
+                        company_name
+                    )
 
-                        tokens = (
-                            meaningful_company_tokens(
-                                company_name
-                            )
+                    for candidate_url in explicit_websites:
+
+                        candidate_domain = domain(candidate_url)
+
+                        score = candidate_domain_score(
+                            candidate_url,
+                            company_name,
+                            title,
+                            full_job_text,
                         )
 
-                        for candidate_url in (
-                            explicit_websites
-                        ):
-
-                            candidate_domain = (
-                                domain(
-                                    candidate_url
-                                )
-                            )
-
-                            if any(
+                        if (
+                            score >= 50
+                            and any(
                                 token in candidate_domain
                                 for token in tokens
-                            ):
+                            )
+                        ):
+                            selected_explicit = candidate_url
+                            break
 
-                                selected_explicit = (
-                                    candidate_url
-                                )
-
-                                break
-
-                    if not selected_explicit:
-
-                        selected_explicit = (
-                            explicit_websites[0]
-                        )
-
-                    resolved_explicit = (
-                        resolve_explicit_website(
+                    if selected_explicit:
+                        resolved_explicit = resolve_explicit_website(
                             selected_explicit,
                             company_name,
                         )
-                    )
+                    else:
+                        resolved_explicit = {}
 
                     if resolved_explicit.get(
                         "website"
@@ -2270,10 +2390,18 @@ def discover(
                 )
 
                 if not final_business_name:
-
-                    final_business_name = (
-                        "Unknown Buyer"
+                    print(
+                        "SKIP UNRESOLVED BUYER: "
+                        f"{title}"
                     )
+                    continue
+
+                if final_business_name.lower().strip() in BLOCKED_COMPANY_NAMES:
+                    print(
+                        "SKIP TOOL/VENDOR BUYER: "
+                        f"{final_business_name}"
+                    )
+                    continue
 
                 # =================================================
                 # FINAL WEBSITE
@@ -2283,6 +2411,22 @@ def discover(
                     resolved_website
                     or ""
                 )
+
+                if is_tool_vendor_domain(final_website):
+                    print(
+                        "SKIP TOOL/VENDOR WEBSITE: "
+                        f"{final_business_name} | "
+                        f"{final_website}"
+                    )
+                    continue
+
+                if not final_website:
+                    print(
+                        "SKIP UNRESOLVED COMPANY WEBSITE: "
+                        f"{final_business_name} | "
+                        f"{title}"
+                    )
+                    continue
 
                 # =================================================
                 # FINAL PHONE
