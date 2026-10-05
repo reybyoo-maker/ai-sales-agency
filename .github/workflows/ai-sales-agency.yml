@@ -1,9 +1,6 @@
 name: AI Sales Agency
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: "0 * * * *"
       timezone: "Asia/Jakarta"
