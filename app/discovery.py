@@ -92,11 +92,22 @@ def extract_gmail(text: str) -> str:
     return ""
 
 def classify(title: str, text: str) -> str:
-    hay = f"{title} {text}".lower()
-    if any(term in hay for term in MARKETING_TERMS):
+    title_hay = normalize(title).lower()
+    # The title is the strongest signal. This avoids classifying an admin/legal/
+    # customer-service role as marketing just because the source page mentions
+    # marketing elsewhere.
+    if any(term in title_hay for term in MARKETING_TERMS):
         return "marketing"
-    if any(term in hay for term in BACK_OFFICE_TERMS):
+    if any(term in title_hay for term in BACK_OFFICE_TERMS):
         return "back_office"
+
+    context = normalize(text).lower()[:5000]
+    marketing_hits = sum(1 for term in MARKETING_TERMS if term in context)
+    back_office_hits = sum(1 for term in BACK_OFFICE_TERMS if term in context)
+    if back_office_hits > marketing_hits and back_office_hits > 0:
+        return "back_office"
+    if marketing_hits > 0:
+        return "marketing"
     return ""
 
 def work_mode(text: str) -> str:
@@ -120,7 +131,7 @@ FAMOUS_COMPANIES = (
 )
 
 def company_tier(name: str, text: str) -> str:
-    hay = f"{name} {text}".lower()
+    hay = f"{normalize(name)} {normalize(text)}".lower()
     return "famous" if any(company in hay for company in FAMOUS_COMPANIES) else "standard"
 
 def extract_company(title: str, text: str) -> str:
@@ -347,10 +358,27 @@ def search_once() -> list[dict]:
                 if LOCATION_QUERY.lower() not in full_text.lower():
                     continue
 
+                title_and_snippet = normalize(f"{title} {search_text}").lower()
+                vacancy_signals = (
+                    "lowongan", "lowong", "loker", "job vacancy", "vacancy",
+                    "career", "careers", "recruitment", "hiring", "apply",
+                    "staff", "specialist", "executive", "officer", "advisor",
+                    "assistant", "manager", "supervisor", "coordinator",
+                    "admin", "accounting", "finance", "hr", "hrd", "legal",
+                    "secretary", "operations", "customer service", "marketing",
+                    "content", "social media", "sales", "procurement",
+                    "purchasing", "warehouse", "logistics",
+                )
+                if not any(signal in title_and_snippet for signal in vacancy_signals):
+                    continue
+
                 # Famous-company roles may use an official ATS/career portal
                 # instead of Gmail. Keep them in the Sheet for tracking, but
                 # leave recipient_email empty so they can never be emailed here.
-                famous_without_gmail = company_tier("", full_text) == "famous" and not email
+                extracted_company = extract_company(title, full_text)
+                famous_without_gmail = (
+                    company_tier(extracted_company, title) == "famous" and not email
+                )
                 if not email and not famous_without_gmail:
                     continue
                 if email and not has_application_context(full_text, email):
@@ -364,7 +392,7 @@ def search_once() -> list[dict]:
                 if not fresh:
                     continue
 
-                tier = company_tier(extract_company(title, full_text), full_text)
+                tier = company_tier(extracted_company, title)
                 published_dt = parse_date(published, now) if published else None
                 age_days = max(0, (now.date() - published_dt.date()).days) if published_dt else ""
                 score, score_reason = prospect_score(title, full_text, category, tier, email, published, date_status, domain(url))
