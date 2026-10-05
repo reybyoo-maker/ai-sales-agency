@@ -12,11 +12,13 @@ ALLOW_UNKNOWN_DATE = os.getenv("ALLOW_UNKNOWN_DATE", "false").lower() in {"1", "
 
 SEARCH_RESULTS_PER_QUERY = int(os.getenv("SEARCH_RESULTS_PER_QUERY", "20"))
 MAX_DISCOVERED_PER_RUN = int(os.getenv("MAX_DISCOVERED_PER_RUN", "150"))
-MAX_AI_PER_RUN = int(os.getenv("MAX_AI_PER_RUN", "40"))
-MIN_FIT_SCORE = int(os.getenv("MIN_FIT_SCORE", "55"))
+MAX_AI_PER_RUN = int(os.getenv("MAX_AI_PER_RUN", "50"))
+DAILY_SEND_LIMIT = int(os.getenv("DAILY_SEND_LIMIT", "100"))
+MAX_SEND_PER_RUN = int(os.getenv("MAX_SEND_PER_RUN", "20"))
+SEND_DELAY_SECONDS = int(os.getenv("SEND_DELAY_SECONDS", "45"))
 
-# This project creates an application queue/drafts. It does not mass-send.
-SEND_ENABLED = False
+# Sending is controlled by the Google Sheet status column. A row must be KIRIM.
+SEND_ENABLED = os.getenv("SEND_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
 
 CANDIDATE_NAME = os.getenv("CANDIDATE_NAME", "REYNALDI KURNIA SONJAYA").strip()
 CANDIDATE_WA = os.getenv("CANDIDATE_WA", "6287813871926").strip()
@@ -80,7 +82,7 @@ OPEN_BLOCK_TERMS = (
 CSV_FIELDS = [
     "job_id", "job_title", "company", "company_tier", "category", "work_mode",
     "location", "source_url", "source_domain", "published_date",
-    "deadline_date", "date_status", "recipient_email", "candidate_headline", "ai_project_note", "fit_score",
-    "fit_reason", "subject", "body", "status", "send_approved",
+    "deadline_date", "date_status", "recipient_email", "candidate_headline", "ai_project_note",
+    "prospect_score", "score_reason", "subject", "body", "status",
     "discovered_at", "sent_at", "error", "notes",
 ]
