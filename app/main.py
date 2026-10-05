@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from .config import AI_PROJECT_NOTE, CSV_FIELDS, DATA_FILE, MAX_AI_PER_RUN, TIMEZONE
 from .discovery import search_once
 from .job_agent import analyze_job, load_cv_text
-from .sheets import append_job, get_profile, get_ws
+from .sheets import append_job, get_profile, get_ws, records, update_row_by_job_id
 
 def now_iso() -> str:
     return datetime.now(ZoneInfo(TIMEZONE)).isoformat()
@@ -30,66 +30,77 @@ def main() -> None:
     print('BANDUNG JOB HUNTER | DISCOVERY + AI DRAFT')
     print('========================================')
 
+    ws = get_ws()
+    profile = get_profile()
+    sheet_rows = records(ws)
     rows = load_rows()
-    existing = {r.get('job_id', '') for r in rows if r.get('job_id')}
+
+    existing = {str(r.get('job_id', '')).strip() for r in sheet_rows + rows if r.get('job_id')}
     jobs = search_once()
-    print(f'DISCOVERED={len(jobs)}')
+    new_jobs = []
+
+    for job in jobs:
+        if job['job_id'] in existing:
+            continue
+        row = {
+            **job,
+            'found_at': now_iso(),
+            'candidate_headline': profile.get('headline', ''),
+            'ai_project_note': profile.get('ai_project', AI_PROJECT_NOTE),
+            'subject': '',
+            'body': '',
+            'status': 'BARU',
+            'sent_at': '',
+            'send_error': '',
+        }
+        rows.append(row)
+        new_jobs.append(row)
+        existing.add(job['job_id'])
+        try:
+            append_job(ws, row)
+        except Exception as exc:
+            print(f'SHEETS APPEND ERROR | {job["job_id"]} | {exc}')
+
+    print(f'DISCOVERED={len(jobs)} NEW={len(new_jobs)}')
+    save_rows(rows)
 
     try:
         cv_text = load_cv_text()
     except Exception as exc:
-        print(f'CV ERROR: {exc}')
+        print(f'CV WARNING: {exc}')
+        print('Jobs are still stored in Sheets. Set CV_PDF_BASE64, then rerun.')
         return
 
-    try:
-        profile = get_profile()
-    except Exception as exc:
-        print(f'PROFILE ERROR: {exc}')
-        return
+    # Draft new and previously undrafted rows; discovery is never blocked by CV errors.
+    candidates = [r for r in rows if r.get('recipient_email') or r.get('company_tier') == 'famous']
+    candidates = [r for r in candidates if str(r.get('subject', '')).strip() == ''][:MAX_AI_PER_RUN]
 
-    try:
-        ws = get_ws()
-    except Exception as exc:
-        print(f'SHEETS ERROR: {exc}')
-        return
-
-    processed = 0
-    added = 0
-    for job in jobs:
-        if job['job_id'] in existing:
-            continue
-        if processed >= MAX_AI_PER_RUN:
-            break
-        processed += 1
-
+    drafted = 0
+    for job in candidates:
         try:
             result = analyze_job(job, cv_text, profile)
-            status = 'SIAP_KIRIM' if job.get('recipient_email') else 'WATCHLIST'
-            row = {
-                **job,
-                'found_at': now_iso(),
-                'candidate_headline': profile.get('headline', ''),
-                'ai_project_note': profile.get('ai_project', AI_PROJECT_NOTE),
-                'subject': str(result.get('subject', '')).strip(),
-                'body': str(result.get('body', '')).strip(),
-                'status': status,
-                'sent_at': '',
-                'send_error': '',
-            }
-            rows.append(row)
-            existing.add(job['job_id'])
-            added += 1
-            try:
-                append_job(ws, row)
-            except Exception as exc:
-                print(f'SHEETS APPEND WARNING: {exc}')
-            print(f'{status} | score={job.get("prospect_score",0)} | {job["job_title"]} | {job.get("recipient_email","")}')
+            status = 'SIAP_REVIEW' if job.get('recipient_email') else 'WATCHLIST'
+            update_row_by_job_id(
+                ws, job['job_id'],
+                candidate_headline=profile.get('headline', ''),
+                ai_project_note=profile.get('ai_project', AI_PROJECT_NOTE),
+                subject=str(result.get('subject', '')).strip(),
+                body=str(result.get('body', '')).strip(),
+                status=status,
+            )
+            job['candidate_headline'] = profile.get('headline', '')
+            job['ai_project_note'] = profile.get('ai_project', AI_PROJECT_NOTE)
+            job['subject'] = str(result.get('subject', '')).strip()
+            job['body'] = str(result.get('body', '')).strip()
+            job['status'] = status
+            drafted += 1
+            print(f'DRAFTED | score={job.get("prospect_score",0)} | {job.get("job_title")} | {job.get("recipient_email","")}')
         except Exception as exc:
-            print(f'AI ERROR | {job["job_title"]} | {type(exc).__name__}: {exc}')
+            print(f'AI DRAFT ERROR | {job.get("job_title")} | {type(exc).__name__}: {exc}')
 
     save_rows(rows)
-    print(f'NEW_JOBS={added}')
-    print('Change status from SIAP_KIRIM to KIRIM in Google Sheets for jobs you want the sender to process at the next peak window.')
+    print(f'DRAFTED={drafted}')
+    print('Manual control: change Sheet status SIAP_REVIEW -> KIRIM for the rows you want sent.')
     print('========================================')
 
 if __name__ == '__main__':
