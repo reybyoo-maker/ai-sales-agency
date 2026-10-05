@@ -33,6 +33,13 @@ jobs:
           GMAIL_ADDRESS: 'reybyoo@gmail.com'
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           CV_PDF_BASE64: ${{ secrets.CV_PDF_BASE64 }}
+          CV_PDF_BASE64_1: ${{ secrets.CV_PDF_BASE64_1 }}
+          CV_PDF_BASE64_2: ${{ secrets.CV_PDF_BASE64_2 }}
+          CV_PDF_BASE64_3: ${{ secrets.CV_PDF_BASE64_3 }}
+          CV_PDF_BASE64_4: ${{ secrets.CV_PDF_BASE64_4 }}
+          CV_PDF_BASE64_5: ${{ secrets.CV_PDF_BASE64_5 }}
+          CV_PDF_BASE64_6: ${{ secrets.CV_PDF_BASE64_6 }}
+          CV_PDF_BASE64_7: ${{ secrets.CV_PDF_BASE64_7 }}
           GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           SHEET_TAB: 'Job Applications'
