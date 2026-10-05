@@ -338,6 +338,8 @@ def search_once() -> list[dict]:
                     continue
 
                 tier = company_tier(extract_company(title, full_text), full_text)
+                published_dt = parse_date(published, now) if published else None
+                age_days = max(0, (now.date() - published_dt.date()).days) if published_dt else ""
                 score, score_reason = prospect_score(title, full_text, category, tier, email, published, date_status, domain(url))
                 job_id = make_id(title, email, url)
                 if job_id in seen:
@@ -357,7 +359,9 @@ def search_once() -> list[dict]:
                     "published_date": published,
                     "deadline_date": "",
                     "date_status": date_status,
+                    "age_days": age_days if published else "",
                     "recipient_email": email,
+                    "application_method": "GMAIL" if email else "PORTAL/ATS",
                     "prospect_score": score,
                     "score_reason": score_reason,
                     "snippet": search_text[:1500],
