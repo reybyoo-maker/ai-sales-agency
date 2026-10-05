@@ -69,7 +69,17 @@ def main() -> None:
         if str(row.get('status','')).strip().upper() != 'KIRIM':
             continue
         job_id = str(row.get('job_id','')).strip()
-        if not job_id or not row.get('recipient_email'):
+        recipient = str(row.get('recipient_email','')).strip().lower()
+        if not job_id:
+            continue
+        if row.get('sent_at'):
+            update_row_by_job_id(ws, job_id, status='TERKIRIM')
+            continue
+        if not recipient.endswith('@gmail.com'):
+            update_row_by_job_id(ws, job_id, status='WATCHLIST', send_error='Tidak ada Gmail penerima; gunakan portal/ATS.')
+            continue
+        if not str(row.get('subject','')).strip() or not str(row.get('body','')).strip():
+            update_row_by_job_id(ws, job_id, status='ERROR', send_error='Subject/body AI belum tersedia.')
             continue
         try:
             send_row(row, profile, cv_path)
