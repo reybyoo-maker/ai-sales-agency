@@ -9,7 +9,7 @@ from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
-from .config import CV_PDF_BASE64, CV_PDF_PATH, GEMINI_API_KEY, GEMINI_MODEL, MIN_FIT_SCORE
+from .config import CV_PDF_BASE64, CV_PDF_PATH, GEMINI_API_KEY, GEMINI_MODEL
 
 def load_cv_text() -> str:
     if CV_PDF_BASE64:
@@ -31,13 +31,12 @@ def analyze_job(job: dict[str, Any], cv_text: str, profile: dict[str, str]) -> d
     schema = {
         "type": "object",
         "properties": {
-            "fit_score": {"type": "integer", "minimum": 0, "maximum": 100},
             "fit_reason": {"type": "string"},
             "application_angle": {"type": "string"},
             "subject": {"type": "string"},
             "body": {"type": "string"},
         },
-        "required": ["fit_score", "fit_reason", "application_angle", "subject", "body"],
+        "required": ["fit_reason", "application_angle", "subject", "body"],
     }
     prompt = f"""
 Kamu adalah career application assistant.
@@ -55,8 +54,8 @@ Data lowongan:
 {json.dumps(job, ensure_ascii=False)}
 
 Aturan:
-1. Nilai kecocokan 0-100 hanya berdasarkan CV dan data lowongan.
-2. Prioritaskan semua aspek marketing. Terima juga back office jika benar-benar cocok dengan CV.
+1. Jangan memakai CV sebagai filter untuk menentukan apakah lowongan boleh masuk database. Semua lowongan yang sudah lolos filter Bandung + marketing/back-office + freshness harus dibuatkan draft.
+2. Gunakan CV hanya untuk memilih pengalaman/skill yang benar-benar relevan agar teks lamaran terasa personal.
 3. Freelance, kontrak, hybrid, remote, part-time, internship, dan full-time boleh.
 4. Jangan mengarang pengalaman, skill, nama HR, gaji, atau fakta perusahaan.
 5. Buat email lamaran singkat, natural, profesional, dan spesifik ke posisi.
@@ -64,9 +63,10 @@ Aturan:
 7. Subjek: Lamaran [Nama Posisi] | [Nama Kandidat] | Agent Agency AI Project | WA [WhatsApp]. Jaga maksimal sekitar 95 karakter; bila terlalu panjang, ringkas nama posisi/proyek tanpa menghapus identitas kandidat dan WA.
 8. Body harus menyebut CV terlampir dan WhatsApp yang ada di profil. Tambahkan satu kalimat tentang project Agent Agency AI hanya bila relevan; jangan membuat email terasa seperti promosi.
 9. Jangan menjamin diterima atau membuat klaim yang tidak ada di CV.
-10. Kandidat dengan fit_score >= {MIN_FIT_SCORE} masuk antrean READY.
+10. Jangan membuat klaim bahwa kandidat pasti cocok atau pasti diterima.
 11. Jangan mengubah headline kandidat menjadi jabatan yang tidak ada di CV.
 12. Project Agent Agency AI hanya boleh dipakai sebagai tambahan singkat, bukan sebagai pengalaman kerja fiktif.
+13. Buat subject yang menarik tetapi profesional. Prioritaskan nama posisi, nama kandidat, dan WA. Sebut Agent Agency AI di subject hanya jika tidak membuat subject terlalu panjang.
 
 Return JSON only.
 """.strip()
