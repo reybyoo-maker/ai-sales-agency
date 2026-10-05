@@ -261,13 +261,18 @@ def search_once() -> list[dict]:
                 if not email:
                     page_text = fetch_page(url)
                     email = extract_gmail(page_text)
-                if not email:
-                    continue
 
                 full_text = normalize(f"{search_text} {page_text}")
                 if LOCATION_QUERY.lower() not in full_text.lower():
                     continue
-                if not has_application_context(full_text, email):
+
+                # Famous-company roles may use an official ATS/career portal
+                # instead of Gmail. Keep them in the Sheet for tracking, but
+                # leave recipient_email empty so they can never be emailed here.
+                famous_without_gmail = company_tier("", full_text) == "famous" and not email
+                if not email and not famous_without_gmail:
+                    continue
+                if email and not has_application_context(full_text, email):
                     continue
 
                 category = classify(title, full_text)
