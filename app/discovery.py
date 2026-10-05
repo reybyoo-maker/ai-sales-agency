@@ -318,84 +318,89 @@ def search_once() -> list[dict]:
     # Keep the query set compact enough to avoid search-provider throttling.
     # Search broadly first, then classify after fetching each result.
     queries = [
-        f'"{LOCATION_QUERY}" lowongan marketing',
-        f'"{LOCATION_QUERY}" lowongan digital marketing',
-        f'"{LOCATION_QUERY}" lowongan social media',
-        f'"{LOCATION_QUERY}" lowongan content creator',
-        f'"{LOCATION_QUERY}" lowongan admin',
-        f'"{LOCATION_QUERY}" lowongan accounting finance',
-        f'"{LOCATION_QUERY}" lowongan HRD recruitment',
-        f'"{LOCATION_QUERY}" lowongan purchasing procurement',
-        f'"{LOCATION_QUERY}" lowongan legal secretary',
-        f'"{LOCATION_QUERY}" lowongan operations',
-        f'"{LOCATION_QUERY}" lowongan customer service',
-        f'"{LOCATION_QUERY}" lowongan back office',
-        f'"{LOCATION_QUERY}" lowongan sales marketing',
-        f'site:glints.com "{LOCATION_QUERY}" lowongan',
-        f'site:id.indeed.com "{LOCATION_QUERY}" lowongan',
-        f'site:jobstreet.co.id "{LOCATION_QUERY}" lowongan',
-        f'site:kalibrr.com "{LOCATION_QUERY}" lowongan',
-        f'site:karir.com "{LOCATION_QUERY}" lowongan',
-        f'site:dealls.com "{LOCATION_QUERY}" lowongan',
-        f'site:id.kitalulus.com "{LOCATION_QUERY}" lowongan',
-        f'site:kitalulus.com "{LOCATION_QUERY}" lowongan',
-        f'site:pintarnya.com "{LOCATION_QUERY}" lowongan',
-        f'site:talentics.id "{LOCATION_QUERY}" lowongan',
-        f'site:karirhub.kemnaker.go.id "{LOCATION_QUERY}" lowongan',
-        f'site:loker.id "{LOCATION_QUERY}" lowongan',
-        f'site:topkarir.com "{LOCATION_QUERY}" lowongan',
-        f'site:urbanhire.com "{LOCATION_QUERY}" lowongan',
-        f'site:ekrut.com "{LOCATION_QUERY}" lowongan',
-        f'site:techinasia.com/jobs "{LOCATION_QUERY}" lowongan',
-        f'site:glassdoor.com "{LOCATION_QUERY}" Bandung jobs',
-        f'site:linkedin.com/jobs "{LOCATION_QUERY}" marketing',
-        f'site:linkedin.com/jobs "{LOCATION_QUERY}" admin',
-        f'site:instagram.com "{LOCATION_QUERY}" loker',
-        f'site:facebook.com "{LOCATION_QUERY}" loker',
-        f'site:tiktok.com "{LOCATION_QUERY}" loker',
-        f'"{LOCATION_QUERY}" "kirim CV" gmail',
-        f'"{LOCATION_QUERY}" "lamaran" gmail',
-        f'"{LOCATION_QUERY}" "recruitment" gmail',
-        f'"{LOCATION_QUERY}" "HRD" gmail',
-        f'"{LOCATION_QUERY}" "apply" gmail',
-        f'"{LOCATION_QUERY}" "loker terbaru" gmail',
-        f'"{LOCATION_QUERY}" "lowongan terbaru" gmail',
-        f'"{LOCATION_QUERY}" "poster lowongan"',
-        f'"{LOCATION_QUERY}" "flyer lowongan"',
-        f'"{LOCATION_QUERY}" "open recruitment"',
-        f'"{LOCATION_QUERY}" hiring marketing',
-        f'"{LOCATION_QUERY}" hiring admin',
-        f'"{LOCATION_QUERY}" hiring HR',
-        f'"{LOCATION_QUERY}" hiring finance',
-        f'"{LOCATION_QUERY}" hiring accounting',
-        f'"{LOCATION_QUERY}" hiring operations',
-        f'"{LOCATION_QUERY}" hiring customer service',
-        f'"{LOCATION_QUERY}" remote marketing',
-        f'"{LOCATION_QUERY}" hybrid marketing',
-        f'"{LOCATION_QUERY}" freelance marketing',
-        f'"{LOCATION_QUERY}" part time admin',
-        f'"{LOCATION_QUERY}" contract HR',
-        f'"{LOCATION_QUERY}" internship marketing',
-        f'"{LOCATION_QUERY}" internship admin',
-        f'"{LOCATION_QUERY}" lowongan Astra',
-        f'"{LOCATION_QUERY}" lowongan Unilever',
-        f'"{LOCATION_QUERY}" lowongan Danone',
-        f'"{LOCATION_QUERY}" lowongan EIGER',
-        f'"{LOCATION_QUERY}" lowongan Telkom',
-        f'"{LOCATION_QUERY}" lowongan BCA',
-        f'"{LOCATION_QUERY}" lowongan BRI',
-        f'"{LOCATION_QUERY}" lowongan BNI',
-        f'"{LOCATION_QUERY}" lowongan Grab',
-        f'"{LOCATION_QUERY}" lowongan Gojek',
-        f'"{LOCATION_QUERY}" lowongan Tokopedia',
-        f'"{LOCATION_QUERY}" lowongan Shopee',
-        f'"{LOCATION_QUERY}" lowongan Traveloka',
+        # LinkedIn Jobs
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" marketing',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" digital marketing',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" social media',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" content creator',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" admin',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" accounting finance',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" HR recruitment',
+        f'site:id.linkedin.com/jobs "{LOCATION_QUERY}" operations customer service',
+
+        # Glints
+        f'site:glints.com "{LOCATION_QUERY}" marketing',
+        f'site:glints.com "{LOCATION_QUERY}" digital marketing social media',
+        f'site:glints.com "{LOCATION_QUERY}" content creator',
+        f'site:glints.com "{LOCATION_QUERY}" admin finance HR operations',
+
+        # JobStreet / SEEK
+        f'site:id.jobstreet.com "{LOCATION_QUERY}" marketing',
+        f'site:id.jobstreet.com "{LOCATION_QUERY}" admin',
+        f'site:id.jobstreet.com "{LOCATION_QUERY}" finance accounting HR',
+        f'site:id.jobstreet.com "{LOCATION_QUERY}" operations customer service',
+
+        # Indeed Indonesia
+        f'site:id.indeed.com "{LOCATION_QUERY}" marketing',
+        f'site:id.indeed.com "{LOCATION_QUERY}" admin finance',
+        f'site:id.indeed.com "{LOCATION_QUERY}" HR operations',
+        f'site:id.indeed.com "{LOCATION_QUERY}" customer service',
+
+        # Kalibrr
+        f'site:kalibrr.com "{LOCATION_QUERY}" marketing',
+        f'site:kalibrr.com "{LOCATION_QUERY}" admin finance HR',
+        f'site:kalibrr.com "{LOCATION_QUERY}" operations customer service',
+
+        # KitaLulus
+        f'site:kitalulus.com "{LOCATION_QUERY}" marketing',
+        f'site:kitalulus.com "{LOCATION_QUERY}" admin finance HR',
+        f'site:kitalulus.com "{LOCATION_QUERY}" operations customer service',
+
+        # Dealls
+        f'site:dealls.com "{LOCATION_QUERY}" marketing',
+        f'site:dealls.com "{LOCATION_QUERY}" admin finance HR',
+        f'site:dealls.com "{LOCATION_QUERY}" operations customer service',
+
+        # Portal kerja Indonesia lainnya
+        f'site:pintarnya.com "{LOCATION_QUERY}" lowongan marketing admin',
+        f'site:pintarnya.com "{LOCATION_QUERY}" lowongan finance HR operations',
+        f'site:talentics.id "{LOCATION_QUERY}" lowongan marketing admin',
+        f'site:talentics.id "{LOCATION_QUERY}" lowongan finance HR operations',
+        f'site:karirhub.kemnaker.go.id "{LOCATION_QUERY}" lowongan marketing',
+        f'site:karirhub.kemnaker.go.id "{LOCATION_QUERY}" lowongan admin finance HR',
+        f'site:karir.com "{LOCATION_QUERY}" lowongan marketing',
+        f'site:karir.com "{LOCATION_QUERY}" lowongan admin finance HR',
+        f'site:loker.id "{LOCATION_QUERY}" lowongan marketing',
+        f'site:loker.id "{LOCATION_QUERY}" lowongan admin finance',
+        f'site:topkarir.com "{LOCATION_QUERY}" lowongan marketing',
+        f'site:topkarir.com "{LOCATION_QUERY}" lowongan admin HR',
+        f'site:ekrut.com "{LOCATION_QUERY}" jobs marketing',
+        f'site:ekrut.com "{LOCATION_QUERY}" jobs admin finance',
+        f'site:techinasia.com/jobs "{LOCATION_QUERY}" marketing',
+        f'site:techinasia.com/jobs "{LOCATION_QUERY}" operations admin',
+        f'site:glassdoor.com "{LOCATION_QUERY}" jobs marketing',
+        f'site:glassdoor.com "{LOCATION_QUERY}" jobs admin finance',
+        f'site:urbanhire.com "{LOCATION_QUERY}" jobs marketing',
+        f'site:urbanhire.com "{LOCATION_QUERY}" jobs admin HR',
+        f'site:hiredtoday.com "{LOCATION_QUERY}" lowongan',
+        f'site:toploker.com "{LOCATION_QUERY}" lowongan',
+        f'site:redy.id "{LOCATION_QUERY}" lowongan',
+
+        # Lamaran langsung via email / flyer
+        f'"{LOCATION_QUERY}" "kirim CV" gmail marketing',
+        f'"{LOCATION_QUERY}" "kirim CV" gmail admin finance HR',
+        f'"{LOCATION_QUERY}" "lamaran melalui email" gmail',
+        f'"{LOCATION_QUERY}" "recruitment" gmail "lowongan"',
+        f'"{LOCATION_QUERY}" "poster lowongan" marketing',
+        f'"{LOCATION_QUERY}" "poster lowongan" admin HR',
+        f'"{LOCATION_QUERY}" "flyer lowongan" Bandung',
     ]
 
     rows: list[dict] = []
     seen: set[str] = set()
 
-    with DDGS(timeout=15) as ddgs:
+    # Google is the only search backend. Queries are restricted to job platforms.
+    with DDGS(timeout=20) as ddgs:
         for query_index, query in enumerate(queries, start=1):
             items = []
             for backend_name in SEARCH_BACKENDS:
@@ -418,7 +423,8 @@ def search_once() -> list[dict]:
                         f"SEARCH ERROR | query={query_index}/{len(queries)} "
                         f"backend={backend_name} | {type(exc).__name__}: {exc}"
                     )
-                    time.sleep(SEARCH_RETRY_DELAY_SECONDS)
+                    if "No results found" not in str(exc):
+                        time.sleep(SEARCH_RETRY_DELAY_SECONDS)
 
             if not items:
                 print(f"SEARCH SKIPPED | query={query_index}/{len(queries)}")
@@ -448,25 +454,6 @@ def search_once() -> list[dict]:
                     continue
 
                 page_text, image_urls = fetch_page_details(url)
-
-                # Some social/portal pages do not expose their poster image in
-                # HTML. Search for closely related vacancy images as a fallback.
-                if not image_urls and FLYER_IMAGE_SEARCH:
-                    try:
-                        image_query = f'"{title}" "{LOCATION_QUERY}" lowongan'
-                        image_items = ddgs.images(
-                            image_query,
-                            region="id-id",
-                            safesearch="moderate",
-                            max_results=FLYER_IMAGE_RESULTS,
-                            backend="bing",
-                        )
-                        for img in image_items or []:
-                            image_url = normalize(img.get("image") or img.get("thumbnail") or "")
-                            if image_url and image_url not in image_urls:
-                                image_urls.append(image_url)
-                    except Exception as exc:
-                        print(f"FLYER IMAGE SEARCH ERROR | {type(exc).__name__}: {exc}")
 
                 full_text = normalize(f"{search_text} {page_text}")
                 if LOCATION_QUERY.lower() not in full_text.lower():
