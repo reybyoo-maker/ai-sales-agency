@@ -191,12 +191,8 @@ MAX_COMPANY_RESOLUTION_PER_RUN = 12
 
 SEARCH_BACKENDS = (
     "auto",
-    "brave",
     "bing",
-    "google",
-    "duckduckgo",
-    "mojeek",
-    "startpage",
+    "brave",
 )
 
 
@@ -1032,6 +1028,62 @@ def extract_company_candidates(
                 candidates.append(
                     name
                 )
+
+    # --------------------------------------------------------
+    # Contextual buyer brand signals.
+    # Example: "becomes a paying Vortio client".
+    # These patterns are intentionally narrow so tools/vendors
+    # mentioned in ordinary instructions are not promoted to buyer.
+    # --------------------------------------------------------
+
+    contextual_patterns = [
+        r"\bpaying\s+([A-Z][A-Za-z0-9&'_-]{2,40})\s+client\b",
+        r"\bpaid\s+([A-Z][A-Za-z0-9&'_-]{2,40})\s+client\b",
+        r"\b([A-Z][A-Za-z0-9&'_-]{2,40})\s+client\b",
+        r"\b(?:for|with)\s+([A-Z][A-Za-z0-9&'_-]{2,40})\s+(?:agency|company|studio)\b",
+    ]
+
+    for pattern in contextual_patterns:
+
+        try:
+
+            matches = re.findall(
+                pattern,
+                text,
+            )
+
+        except re.error:
+
+            matches = []
+
+        for match in matches:
+
+            name = clean_company_candidate(
+                str(match)
+            )
+
+            if not name:
+                continue
+
+            if name.lower() in BLOCKED_COMPANY_NAMES:
+                continue
+
+            if (
+                company_name_score(
+                    name
+                )
+                < 60
+            ):
+                continue
+
+            if any(
+                phrase in name.lower()
+                for phrase in GENERIC_PHRASES
+            ):
+                continue
+
+            if name not in candidates:
+                candidates.append(name)
 
     # --------------------------------------------------------
     # LeadOrbix is a...
@@ -1901,7 +1953,7 @@ def discover(
     )
 
     query_count = min(
-        20,
+        10,
         len(INTENT_QUERIES),
     )
 
@@ -2205,71 +2257,109 @@ def discover(
                 # EXPLICIT WEBSITE FOUND IN JOB
                 # =================================================
 
-                if (
-                    explicit_websites
-                    and company_name
-                    and company_name.lower()
-                    not in BLOCKED_COMPANY_NAMES
-                ):
+                if explicit_websites:
 
                     selected_explicit = ""
+                    resolved_explicit = {}
 
-                    tokens = meaningful_company_tokens(
+                    # Case A: company already identified from job context.
+                    if (
                         company_name
-                    )
-
-                    for candidate_url in explicit_websites:
-
-                        candidate_domain = domain(candidate_url)
-
-                        score = candidate_domain_score(
-                            candidate_url,
-                            company_name,
-                            title,
-                            full_job_text,
-                        )
-
-                        if (
-                            score >= 50
-                            and any(
-                                token in candidate_domain
-                                for token in tokens
-                            )
-                        ):
-                            selected_explicit = candidate_url
-                            break
-
-                    if selected_explicit:
-                        resolved_explicit = resolve_explicit_website(
-                            selected_explicit,
-                            company_name,
-                        )
-                    else:
-                        resolved_explicit = {}
-
-                    if resolved_explicit.get(
-                        "website"
+                        and company_name.lower()
+                        not in BLOCKED_COMPANY_NAMES
                     ):
 
-                        resolved = (
-                            resolved_explicit
+                        tokens = meaningful_company_tokens(
+                            company_name
                         )
 
-                        if not company_name:
+                        for candidate_url in explicit_websites:
 
-                            company_name = (
-                                resolved.get(
-                                    "company_name",
+                            candidate_domain = domain(
+                                candidate_url
+                            )
+
+                            score = candidate_domain_score(
+                                candidate_url,
+                                company_name,
+                                title,
+                                full_job_text,
+                            )
+
+                            if (
+                                score >= 50
+                                and any(
+                                    token in candidate_domain
+                                    for token in tokens
+                                )
+                            ):
+                                selected_explicit = candidate_url
+                                break
+
+                        if selected_explicit:
+                            resolved_explicit = (
+                                resolve_explicit_website(
+                                    selected_explicit,
+                                    company_name,
+                                )
+                            )
+
+                    # Case B: no company name yet. Let the website title
+                    # produce a candidate, then require the candidate name
+                    # to match the domain. This is NOT a first-URL fallback.
+                    if not selected_explicit:
+
+                        for candidate_url in explicit_websites:
+
+                            candidate = (
+                                resolve_explicit_website(
+                                    candidate_url,
                                     "",
                                 )
                             )
 
-                            if company_name:
+                            derived_name = (
+                                normalize(
+                                    candidate.get(
+                                        "company_name",
+                                        "",
+                                    )
+                                )
+                            )
 
+                            if (
+                                not derived_name
+                                or derived_name.lower()
+                                in BLOCKED_COMPANY_NAMES
+                            ):
+                                continue
+
+                            score = candidate_domain_score(
+                                candidate_url,
+                                derived_name,
+                                candidate.get(
+                                    "website_title",
+                                    "",
+                                ),
+                                candidate.get(
+                                    "website_text",
+                                    "",
+                                ),
+                            )
+
+                            if score >= 70:
+                                selected_explicit = candidate_url
+                                resolved_explicit = candidate
+                                company_name = derived_name
                                 print(
-                                    "COMPANY CANDIDATE: "
+                                    "COMPANY CANDIDATE FROM WEBSITE: "
                                     f"{company_name}"
                                 )
+                                break
+
+                    if resolved_explicit.get("website"):
+
+                        resolved = resolved_explicit
 
                 # =================================================
                 # PRIORITY 2:
