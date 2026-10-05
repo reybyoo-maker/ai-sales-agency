@@ -18,7 +18,7 @@ MIN_FIT_SCORE = int(os.getenv("MIN_FIT_SCORE", "55"))
 # This project creates an application queue/drafts. It does not mass-send.
 SEND_ENABLED = False
 
-CANDIDATE_NAME = os.getenv("CANDIDATE_NAME", "").strip()
+CANDIDATE_NAME = os.getenv("CANDIDATE_NAME", "REYNALDI KURNIA SONJAYA").strip()
 CANDIDATE_WA = os.getenv("CANDIDATE_WA", "6287813871926").strip()
 GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS", "reybyoo@gmail.com").strip()
 CANDIDATE_HEADLINE = os.getenv("CANDIDATE_HEADLINE", "Leader | Mentor | Marketing Officer | Data Analyst | Digital Marketing | Promotion | Influencer").strip()
@@ -80,7 +80,7 @@ OPEN_BLOCK_TERMS = (
 CSV_FIELDS = [
     "job_id", "job_title", "company", "company_tier", "category", "work_mode",
     "location", "source_url", "source_domain", "published_date",
-    "deadline_date", "date_status", "recipient_email", "candidate_headline", "fit_score",
+    "deadline_date", "date_status", "recipient_email", "candidate_headline", "ai_project_note", "fit_score",
     "fit_reason", "subject", "body", "status", "send_approved",
     "discovered_at", "sent_at", "error", "notes",
 ]
