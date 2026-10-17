@@ -159,7 +159,7 @@ function cloneWithTextStyle(targetShape,paragraphStrings){
   var t=tx.ownerDocument.createElementNS(NS.a,"a:t");t.textContent=txt;
   if(/^\s|\s$/.test(txt))t.setAttributeNS("http://www.w3.org/XML/1998/namespace","xml:space","preserve");
   run.appendChild(t);
-  if(endRPr&&endRPr.parentNode===p)p.insertBefore(run,endRPr);else p.appendChild(run);
+  var paragraphEnd=direct(p,NS.a,"endParaRPr")[0];if(paragraphEnd)p.insertBefore(run,paragraphEnd);else p.appendChild(run);
   return p;
  }
  paras.forEach(function(p){tx.removeChild(p)});
