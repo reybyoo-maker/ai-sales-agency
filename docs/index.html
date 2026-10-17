@@ -73,11 +73,45 @@ function extractTables(slideDoc,slideNo){
  var out=[];
  nodes(slideDoc,NS.p,"graphicFrame").forEach(function(frame,fi){
   nodes(frame,NS.a,"tbl").forEach(function(tbl){
-   var rows=nodes(tbl,NS.a,"tr").map(function(row){return direct(row,NS.a,"tc").map(function(cell){return nodes(cell,NS.a,"t").map(function(t){return t.textContent}).join("")}).join(" | ")}).filter(function(row){return row.replace(/[|\\s]/g,"").length>0});
-   if(rows.length)out.push({name:"Tabel slide "+slideNo+" nomor "+(fi+1),paragraphs:rows.slice(),text:rows.join("\n")});
+   var matrix=nodes(tbl,NS.a,"tr").map(function(row){return direct(row,NS.a,"tc").map(function(cell){return nodes(cell,NS.a,"t").map(function(t){return t.textContent}).join("")})}).filter(function(row){return row.some(function(cell){return String(cell||"").trim().length>0})});
+   var rows=matrix.map(function(row){return row.join(" | ")});
+   if(rows.length)out.push({name:"Tabel slide "+slideNo+" nomor "+(fi+1),paragraphs:rows.slice(),text:rows.join("\n"),matrix:matrix,cells:matrix.reduce(function(all,row){return all.concat(row)},[])});
   });
  });
  return out;
+}
+function setTableCellText(cell,value){
+ var tx=nodes(cell,NS.a,"txBody")[0];if(!tx)return;
+ var oldParas=direct(tx,NS.a,"p"),base=oldParas[0]?oldParas[0].cloneNode(true):tx.ownerDocument.createElementNS(NS.a,"a:p");
+ var firstRun=nodes(base,NS.a,"r")[0],firstRPr=firstRun?direct(firstRun,NS.a,"rPr")[0]:null;
+ nodes(base,NS.a,"r").concat(nodes(base,NS.a,"br"),nodes(base,NS.a,"fld")).forEach(function(n){if(n.parentNode===base)base.removeChild(n)});
+ var end=direct(base,NS.a,"endParaRPr")[0],run=tx.ownerDocument.createElementNS(NS.a,"a:r");
+ if(firstRPr)run.appendChild(firstRPr.cloneNode(true));
+ var t=tx.ownerDocument.createElementNS(NS.a,"a:t");t.textContent=String(value||"");
+ run.appendChild(t);
+ if(end)base.insertBefore(run,end);else base.appendChild(run);
+ oldParas.forEach(function(p){tx.removeChild(p)});
+ tx.appendChild(base);
+}
+function applySourceTables(templateSlide,sourceSlide){
+ var targetTables=[];
+ nodes(templateSlide.xml,NS.p,"graphicFrame").forEach(function(frame){nodes(frame,NS.a,"tbl").forEach(function(tbl){targetTables.push(tbl)})});
+ var sourceTables=sourceSlide.tables||[],mapped=Math.min(targetTables.length,sourceTables.length);
+ targetTables.forEach(function(tbl,index){
+  var rows=nodes(tbl,NS.a,"tr"),cells=[];
+  rows.forEach(function(row){direct(row,NS.a,"tc").forEach(function(cell){cells.push(cell)})});
+  var src=sourceTables[index],values=src?src.cells.slice():[];
+  if(src&&values.length>cells.length&&cells.length){var tail=values.slice(cells.length-1);values=values.slice(0,cells.length-1);values.push(tail.join(" | "))}
+  cells.forEach(function(cell,cellIndex){setTableCellText(cell,values[cellIndex]||"")});
+ });
+ var remaining=sourceTables.slice(mapped);
+ return {mapped:mapped,unmappedTables:remaining};
+}
+function tableIntegrityContent(slide){
+ return (slide.tables||[]).reduce(function(all,table){(table.cells||[]).forEach(function(value,index){if(String(value||"").trim())all.push({name:table.name+" sel "+(index+1),text:String(value),paragraphs:[String(value)]})});return all},[]);
+}
+function removeReferenceCharts(slideDoc){
+ nodes(slideDoc,NS.p,"graphicFrame").slice().forEach(function(frame){if(nodes(frame,NS.c,"chart").length&&frame.parentNode)frame.parentNode.removeChild(frame)});
 }
 async function extractChartData(zip,slidePath,slideNo){
  var out=[],relText=await zipText(zip,relPart(slidePath));
@@ -113,8 +147,8 @@ async function readDeck(file){
  for(var i=0;i<paths.length;i++){
   var path=paths[i],text=await zipText(zip,path);if(!text)continue;
   var d=xml(text),shapeList=nodes(d,NS.p,"sp").map(function(sp,index){return getShape(sp,index)}),pictures=nodes(d,NS.p,"pic").length,frames=nodes(d,NS.p,"graphicFrame").length;
-  var supplemental=extractTables(d,i+1).concat(await extractChartData(zip,path,i+1));
-  slides.push({path:path,xml:d,xmlText:text,shapes:shapeList,images:pictures,frames:frames,index:i,supplemental:supplemental});
+  var tables=extractTables(d,i+1),supplemental=await extractChartData(zip,path,i+1),hasCharts=nodes(d,NS.p,"graphicFrame").some(function(frame){return nodes(frame,NS.c,"chart").length>0});
+  slides.push({path:path,xml:d,xmlText:text,shapes:shapeList,images:pictures,frames:frames,index:i,tables:tables,supplemental:supplemental,hasCharts:hasCharts});
  }
  var max=0;Object.keys(zip.files).forEach(function(p){var m=p.match(/^ppt\/slides\/slide(\d+)\.xml$/);if(m)max=Math.max(max,Number(m[1]))});
  return {zip:zip,slides:slides,name:file.name,maxSlide:max,presentation:pd,presText:ptext,presRels:relations.doc,presRelsMap:relations.map};
@@ -138,7 +172,7 @@ function countTextShapes(slide){return slide.shapes.filter(function(s){return s.
 function textFreq(deck){var freq={};deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();if(t)freq[t]=(freq[t]||0)+1})});return freq}
 function protectRepeatedTemplateText(deck){var freq=textFreq(deck);deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();var bottomBrand=s.y!==null&&s.y>6.45;var tinyTopBrand=s.y!==null&&s.y<0.35&&s.heightIn!==null&&s.heightIn<0.28&&t.length<50;var smallRepeatedLabel=(s.widthIn!==null&&s.widthIn<1.2&&t.length<=18)||(s.heightIn!==null&&s.heightIn<0.28&&t.length<50);if(t&&freq[t]>1&&t.length<55&&(bottomBrand||tinyTopBrand||smallRepeatedLabel))s.protected=true})})}
 function chooseTemplateSlide(src,ref,sourceIndex,sourceCount){
- var texts=extractText(src),expected=sourceCount<=1?0:sourceIndex*(ref.slides.length-1)/(sourceCount-1),sourceChars=texts.reduce(function(n,x){return n+(x.text||"").length},0),sourceTop=texts.filter(function(x){return readingY(x)<1.35}).length,best=0,bestScore=Infinity;
+ var texts=extractText(src).concat(src.tables||[]),expected=sourceCount<=1?0:sourceIndex*(ref.slides.length-1)/(sourceCount-1),sourceChars=texts.reduce(function(n,x){return n+(x.text||"").length},0),sourceTop=texts.filter(function(x){return readingY(x)<1.35}).length,best=0,bestScore=Infinity;
  ref.slides.forEach(function(t,i){
   var slots=t.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}),slotCount=slots.length,targetChars=slots.reduce(function(n,s){return n+(s.maxChars||135)},0),targetTop=slots.filter(function(s){return readingY(s)<1.35}).length;
   var score=Math.abs(texts.length-slotCount)*2.8+Math.abs(sourceChars-targetChars)/Math.max(40,sourceChars>targetChars?7:22)+Math.abs(sourceTop-targetTop)*1.35+Math.abs(src.frames-t.frames)*0.42+Math.abs(i-expected)*0.22;
@@ -209,8 +243,11 @@ async function buildOutput(source,reference,onProgress){
   var clonedShapes=nodes(cloned,NS.p,"sp").map(function(sp,index){return getShape(sp,index)});
   template.shapes.forEach(function(original,index){if(original.protected&&clonedShapes[index])clonedShapes[index].protected=true});
   var tempSlide={shapes:clonedShapes,xml:cloned,images:template.images,frames:template.frames};
-  var sourceContent=extractText(src);
-  var assigned=applySourceText(tempSlide,src);
+  var tableResult=applySourceTables(tempSlide,src);
+  removeReferenceCharts(cloned);
+  var sourceForText={shapes:src.shapes,supplemental:(src.supplemental||[]).concat(tableResult.unmappedTables),tables:src.tables||[]};
+  var sourceContent=extractText(src).concat(tableIntegrityContent(src));
+  var assigned=applySourceText(tempSlide,sourceForText);
   if(assigned.sourceTexts>0&&assigned.slots===0)throw new Error("Slide contoh "+(template.index+1)+" tidak mempunyai kotak teks yang bisa dipakai untuk slide materi "+(i+1)+". Pilih PPTX contoh yang memiliki teks editable.");
   var renderedText=nodes(cloned,NS.a,"t").map(function(n){return n.textContent}).join("\n").replace(/\s+/g," ").trim();
   var missing=sourceContent.filter(function(item){var t=(item.text||"").replace(/\s+/g," ").trim();return t.length>2&&renderedText.indexOf(t)<0});
