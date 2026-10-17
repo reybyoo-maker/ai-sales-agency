@@ -120,7 +120,7 @@ async function readDeck(file){
 function getShape(sp,index){
  var cnv=nodes(sp,NS.p,"cNvPr")[0],tx=nodes(sp,NS.p,"txBody")[0],name=cnv?cnv.getAttribute("name"):"Shape "+index,id=cnv?cnv.getAttribute("id"):String(index);
  if(!tx)return {node:sp,index:index,id:id,name:name,text:"",paragraphs:[],protected:false};
- var pars=nodes(tx,NS.a,"p"),paragraphs=pars.map(function(p){return nodes(p,NS.a,"t").map(function(t){return t.textContent}).join("")});
+ var pars=nodes(tx,NS.a,"p"),paragraphs=pars.map(function(p){var out="";Array.prototype.forEach.call(p.childNodes,function(n){if(n.nodeType!==1||n.namespaceURI!==NS.a)return;if(n.localName==="br")out+="\n";else if(n.localName==="r"||n.localName==="fld")out+=nodes(n,NS.a,"t").map(function(t){return t.textContent}).join("")});return out});
  var text=paragraphs.join("\n").trim();
  var ph=nodes(sp,NS.p,"ph")[0],phType=ph?ph.getAttribute("type"):"";
  var xfrm=nodes(sp,NS.a,"xfrm")[0],off=xfrm?nodes(xfrm,NS.a,"off")[0]:null,ext=xfrm?nodes(xfrm,NS.a,"ext")[0]:null,x=off?Number(off.getAttribute("x"))/914400:null,y=off?Number(off.getAttribute("y"))/914400:null,w=ext?Number(ext.getAttribute("cx"))/914400:null,h=ext?Number(ext.getAttribute("cy"))/914400:null;
@@ -153,13 +153,17 @@ function cloneWithTextStyle(targetShape,paragraphStrings){
  var endRPr=nodes(base,NS.a,"endParaRPr")[0],pPr=direct(base,NS.a,"pPr")[0];
  function makeParagraph(txt){
   var p=base.cloneNode(true);
-  nodes(p,NS.a,"r").concat(nodes(p,NS.a,"br"),nodes(p,NS.a,"fld")).forEach(function(n){if(n.parentNode===p)n.parentNode.removeChild(n)});
-  var run=tx.ownerDocument.createElementNS(NS.a,"a:r");
-  if(firstRPr)run.appendChild(firstRPr.cloneNode(true));
-  var t=tx.ownerDocument.createElementNS(NS.a,"a:t");t.textContent=txt;
-  if(/^\s|\s$/.test(txt))t.setAttributeNS("http://www.w3.org/XML/1998/namespace","xml:space","preserve");
-  run.appendChild(t);
-  var paragraphEnd=direct(p,NS.a,"endParaRPr")[0];if(paragraphEnd)p.insertBefore(run,paragraphEnd);else p.appendChild(run);
+  nodes(p,NS.a,"r").concat(nodes(p,NS.a,"br"),nodes(p,NS.a,"fld")).forEach(function(n){if(n.parentNode===p)p.removeChild(n)});
+  var paragraphEnd=direct(p,NS.a,"endParaRPr")[0],parts=String(txt||"").split(/\r?\n/);
+  function appendBeforeEnd(node){if(paragraphEnd)p.insertBefore(node,paragraphEnd);else p.appendChild(node)}
+  parts.forEach(function(part,index){
+   if(index){var br=tx.ownerDocument.createElementNS(NS.a,"a:br");if(firstRPr)br.appendChild(firstRPr.cloneNode(true));appendBeforeEnd(br)}
+   var run=tx.ownerDocument.createElementNS(NS.a,"a:r");
+   if(firstRPr)run.appendChild(firstRPr.cloneNode(true));
+   var t=tx.ownerDocument.createElementNS(NS.a,"a:t");t.textContent=part;
+   if(/^\s|\s$/.test(part))t.setAttributeNS("http://www.w3.org/XML/1998/namespace","xml:space","preserve");
+   run.appendChild(t);appendBeforeEnd(run);
+  });
   return p;
  }
  paras.forEach(function(p){tx.removeChild(p)});
