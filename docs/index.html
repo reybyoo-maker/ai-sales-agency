@@ -278,7 +278,7 @@ $("run").onclick=async function(){
   setProgress(.22,"Mencocokkan layout berdasar struktur slide…");
   var built=await buildOutput(sourceDeck,refDeck,setProgress);
   outputBlob=built.blob;outputName=(sourceFile.name.replace(/\.pptx$/i,"").replace(/[\\/:*?"<>|]/g,"").trim()||"Presentation")+"-ikut-contoh.pptx";
-  $("downloadDetails").textContent="Jumlah slide: "+built.summaries.length+". Total kotak teks sumber yang dibaca: "+built.allSourceText+". Teks dipindahkan tanpa parafrasa. Cek slide yang padat setelah membuka file.";
+  $("downloadDetails").textContent="Jumlah slide: "+built.summaries.length+". Total blok teks/data dari materi: "+built.allSourceText+". Teks serta nilai tabel/grafik yang terbaca dipindahkan tanpa parafrasa. Periksa kepadatan teks dan posisi visual sebelum dipakai.";
   $("download").style.display="block";$("progress").style.display="none";setStatus("Selesai. File PPTX baru sudah siap. Layout/visual/animasi berasal dari contoh; isi teks sumber dipindahkan apa adanya.","good");
  }catch(e){$("progress").style.display="none";setStatus("Gagal memproses PPTX: "+(e&&e.message?e.message:String(e)),"bad")}
  finally{$("run").disabled=!(sourceFile&&refFile)}
