@@ -128,16 +128,16 @@ function getShape(sp,index){
  var roleCapacity=phType==="title"||phType==="ctrTitle"?190:phType==="subTitle"?150:phType==="body"||phType==="obj"?460:135;
  return {node:sp,index:index,id:id,name:name,text:text,paragraphs:paragraphs,protected:protectedShape,hasField:nodes(sp,NS.a,"fld").length>0,x:x,y:y,widthIn:w,heightIn:h,maxChars:Math.max(24,w&&h?Math.round(w*h*32):roleCapacity)};
 }
-function extractText(slide){var ordered=slide.shapes.filter(function(s){return s.text.length>0&&!s.hasField}).slice().sort(function(a,b){var ay=a.y===null||a.y===undefined?99:a.y,by=b.y===null||b.y===undefined?99:b.y,ax=a.x===null||a.x===undefined?0:a.x,bx=b.x===null||b.x===undefined?0:b.x;return Math.abs(ay-by)>.18?ay-by:ax-bx});var base=ordered.map(function(s){return {name:s.name,paragraphs:s.paragraphs.slice(),text:s.paragraphs.join("\n")}});return base.concat(slide.supplemental||[])}
+function extractText(slide){var ordered=slide.shapes.filter(function(s){return s.text.length>0&&!s.hasField}).slice().sort(function(a,b){var ay=a.y===null||a.y===undefined?99:a.y,by=b.y===null||b.y===undefined?99:b.y,ax=a.x===null||a.x===undefined?0:a.x,bx=b.x===null||b.x===undefined?0:b.x;return Math.abs(ay-by)>.18?ay-by:ax-bx});var base=ordered.map(function(s){return {name:s.name,paragraphs:s.paragraphs.slice(),text:s.paragraphs.join("\n"),x:s.x,y:s.y,maxChars:s.maxChars}});return base.concat(slide.supplemental||[])}
 function countTextShapes(slide){return slide.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}).length}
 function textFreq(deck){var freq={};deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();if(t)freq[t]=(freq[t]||0)+1})});return freq}
 function protectRepeatedTemplateText(deck){var freq=textFreq(deck);deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();var edge=s.y!==null&&(s.y<0.55||s.y>6.45);if(t&&freq[t]>1&&t.length<55&&edge)s.protected=true})})}
 function chooseTemplateSlide(src,ref,sourceIndex,sourceCount){
- var texts=extractText(src),expected=sourceCount<=1?0:sourceIndex*(ref.slides.length-1)/(sourceCount-1),best=0,bestScore=Infinity;
+ var texts=extractText(src),expected=sourceCount<=1?0:sourceIndex*(ref.slides.length-1)/(sourceCount-1),sourceChars=texts.reduce(function(n,x){return n+(x.text||"").length},0),sourceTop=texts.filter(function(x){return typeof x.y==="number"&&x.y<1.35}).length,best=0,bestScore=Infinity;
  ref.slides.forEach(function(t,i){
-  var slots=t.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}).length;
-  var score=Math.abs(texts.length-slots)*2.4+Math.abs(src.images-t.images)*0.55+Math.abs(src.frames-t.frames)*0.4+Math.abs(i-expected)*0.22;
-  if(slots===0)score+=10000;
+  var slots=t.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}),slotCount=slots.length,targetChars=slots.reduce(function(n,s){return n+(s.maxChars||135)},0),targetTop=slots.filter(function(s){return typeof s.y==="number"&&s.y<1.35}).length;
+  var score=Math.abs(texts.length-slotCount)*2.8+Math.abs(sourceChars-targetChars)/Math.max(40,sourceChars>targetChars?7:22)+Math.abs(sourceTop-targetTop)*1.35+Math.abs(src.frames-t.frames)*0.42+Math.abs(i-expected)*0.22;
+  if(slotCount===0)score+=10000;
   if(sourceIndex===0&&i===0)score-=1.5;
   if(score<bestScore){bestScore=score;best=i}
  });
