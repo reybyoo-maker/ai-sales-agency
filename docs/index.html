@@ -83,7 +83,7 @@ async function extractChartData(zip,slidePath,slideNo){
  var out=[],relText=await zipText(zip,relPart(slidePath));
  if(!relText)return out;
  var links=parseRels(relText).map;
- var chartLinks=Object.keys(links).map(function(k){return links[k]}).filter(function(r){return /\\/chart$/.test(r.type||"")&&r.mode!=="External"});
+ var chartLinks=Object.keys(links).map(function(k){return links[k]}).filter(function(r){return (r.type||"").endsWith("/chart")&&r.mode!=="External"});
  for(var i=0;i<chartLinks.length;i++){
   var chartPath=resolveTarget(slidePath,chartLinks[i].target),raw=await zipText(zip,chartPath);
   if(!raw)continue;
