@@ -184,11 +184,16 @@ function applySourceText(templateSlide,sourceSlide){
  if(!source.length)return {sourceTexts:0,slots:slots.length,assigned:0};
  if(!slots.length)return {sourceTexts:source.length,slots:0,assigned:0};
  var groups=[],i;
- for(i=0;i<Math.min(source.length,slots.length);i++)groups.push(source[i].paragraphs.slice());
- if(source.length>slots.length){
-  var remainder=[];
-  for(i=slots.length-1;i<source.length;i++)source[i].paragraphs.forEach(function(p){remainder.push(p)});
-  groups[slots.length-1]=remainder;
+ if(source.length<=slots.length){for(i=0;i<slots.length;i++)groups[i]=source[i]?source[i].paragraphs.slice():[]}
+ else{
+  var overflowIndex=0,bestCapacity=-Infinity;
+  slots.forEach(function(slot,index){var n=(slot.name||"").toLowerCase(),priority=(slot.maxChars||135)+(/body|content|description|detail|subtitle|text|object/i.test(n)?120:0)-(/title|heading|footer|slide.?num|logo/i.test(n)?55:0);if(priority>bestCapacity){bestCapacity=priority;overflowIndex=index}});
+  var overflowCount=source.length-slots.length+1;
+  for(i=0;i<slots.length;i++){
+   if(i<overflowIndex)groups[i]=source[i].paragraphs.slice();
+   else if(i===overflowIndex){groups[i]=[];for(var si=i;si<i+overflowCount;si++)source[si].paragraphs.forEach(function(p){groups[i].push(p)})}
+   else groups[i]=source[i+overflowCount-1].paragraphs.slice();
+  }
  }
  for(i=0;i<slots.length;i++)cloneWithTextStyle(slots[i],groups[i]||[]);
  return {sourceTexts:source.length,slots:slots.length,assigned:Math.min(source.length,slots.length)};
