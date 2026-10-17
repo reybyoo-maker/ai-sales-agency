@@ -4,59 +4,240 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#090b12">
-<title>Rey Slide AI — Reference Studio</title>
-<meta name="description" content="Buat presentasi baru dari materi mentah dengan gaya visual PPTX referensi, termasuk ilustrasi, diagram dan aset visual yang relevan.">
+<title>Rey Slide AI — PPTX Style Transfer</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
-:root{color-scheme:dark;--bg:#090b12;--panel:#111624;--line:#293248;--text:#f5f7ff;--muted:#a7b0c4;--mint:#92f3d4;--purple:#b7a6ff}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 80% 0%,#29234d 0,transparent 36%),radial-gradient(ellipse at 0% 100%,#133333 0,transparent 32%),var(--bg);color:var(--text);font:16px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-main{max-width:1080px;margin:0 auto;padding:28px 22px 64px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:80px}
-.brand{display:flex;align-items:center;gap:12px;font-weight:850;letter-spacing:.12em;font-size:13px}
-.logo{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--mint),var(--purple));color:#111421;font-size:20px;font-weight:1000}
-.tag{color:var(--mint);border:1px solid #2e6259;border-radius:99px;padding:6px 11px;font-size:11px;letter-spacing:.1em}
-.hero{max-width:850px}
-.eyebrow{color:var(--mint);font-size:12px;letter-spacing:.22em;font-weight:850}
-h1{font-size:clamp(38px,7.3vw,76px);line-height:1.01;letter-spacing:-.06em;margin:18px 0 22px}
-h1 span{color:var(--mint)}
-.lead{font-size:clamp(17px,2vw,20px);color:#c0c7d7;max-width:740px;line-height:1.7}
-.actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:32px}
-.button{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 21px;border-radius:14px;background:var(--mint);color:#09130f;font-weight:850;text-decoration:none;box-shadow:0 12px 34px #67e4c522;transition:transform .15s ease,filter .15s ease}
-.button:hover{transform:translateY(-2px);filter:brightness(1.04)}
-.mini{font-size:13px;color:var(--muted);max-width:330px}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:65px}
-.card{border:1px solid var(--line);border-radius:18px;background:#111624dd;padding:20px}
-.num{color:var(--mint);font-size:12px;letter-spacing:.12em;font-weight:850}
-.card h2{font-size:17px;margin:8px 0}
-.card p{color:var(--muted);font-size:14px;margin:0}
-.note{margin-top:24px;padding:18px 20px;border:1px solid #35384f;border-radius:16px;background:#111522aa;color:#c1c7d6;font-size:13px}
-.note strong{color:#f1f3ff}
-footer{margin-top:36px;color:#8992a7;font-size:12px}
-@media(max-width:720px){.top{margin-bottom:58px}.grid{grid-template-columns:1fr;margin-top:46px}.tag{display:none}.actions{align-items:stretch}.button{width:100%}}
+:root{color-scheme:dark;--bg:#090b12;--panel:#111624;--line:#293248;--text:#f5f7ff;--muted:#a7b0c4;--mint:#92f3d4;--purple:#b7a6ff;--red:#ff9b9b;--gold:#ffd792}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 0%,#29234d 0,transparent 35%),radial-gradient(ellipse at 0% 90%,#143c37 0,transparent 31%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1120px;margin:auto;padding:26px 20px 70px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:46px}.brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.1em;font-size:12px}.logo{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--mint),var(--purple));color:#111421;font-size:20px}.tag{color:var(--mint);border:1px solid #2e6259;border-radius:99px;padding:6px 11px;font-size:10px;letter-spacing:.1em}
+.hero{max-width:860px;margin-bottom:30px}.eyebrow{color:var(--mint);font-size:11px;letter-spacing:.2em;font-weight:900}h1{font-size:clamp(38px,6.6vw,66px);line-height:1.03;letter-spacing:-.06em;margin:15px 0 18px}h1 span{color:var(--mint)}.lead{max-width:760px;color:#c0c7d7;font-size:17px;line-height:1.7;margin:0}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}.panel{border:1px solid var(--line);border-radius:20px;background:linear-gradient(145deg,#141b2bfa,#0d1320fa);padding:21px;min-width:0}.panelhead{display:flex;align-items:center;gap:12px;margin-bottom:16px}.num{width:37px;height:37px;border:1px solid #3d4a60;border-radius:12px;display:grid;place-items:center;color:var(--mint);font-size:12px;font-weight:900}.panel h2{font-size:16px;margin:0}.panelhead p{margin:2px 0 0;color:var(--muted);font-size:12px}.drop{min-height:176px;border:1px dashed #4a5870;border-radius:15px;background:#0c111d;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:17px;cursor:pointer;transition:.18s}.drop:hover,.drop.drag{border-color:var(--mint);background:#101e25}.drop .up{font-size:26px;margin-bottom:8px;color:var(--mint)}.drop strong{font-size:14px}.drop small{color:var(--muted);font-size:12px;margin-top:5px;max-width:300px}.drop input{display:none}.fileinfo{display:none;margin-top:12px;background:#0b101b;border:1px solid #293248;border-radius:12px;padding:11px 12px;overflow-wrap:anywhere}.fileinfo b{display:block;font-size:13px}.fileinfo span{display:block;color:var(--muted);font-size:11px;margin-top:4px}.remove{margin-top:8px;border:0;background:none;color:var(--red);cursor:pointer;padding:0;font:inherit;font-size:12px}
+.options{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.option{border:1px solid #293248;border-radius:12px;padding:11px;background:#0b101a;color:var(--muted);font-size:12px}.option strong{display:block;color:#e5e9f6;font-size:12px;margin-bottom:3px}.work{margin-top:17px;border:1px solid var(--line);border-radius:20px;padding:20px 21px;background:#111624dd}.work h2{margin:0 0 6px;font-size:17px}.work p{margin:0;color:var(--muted);font-size:13px}.runrow{display:flex;gap:12px;align-items:center;margin-top:17px;flex-wrap:wrap}.btn{border:0;border-radius:13px;padding:14px 20px;background:var(--mint);color:#07140f;font-weight:900;font-size:13px;letter-spacing:.01em;cursor:pointer;transition:transform .15s,opacity .15s}.btn:hover{transform:translateY(-1px)}.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}.secondary{background:#20283a;color:#e7edff;border:1px solid #35415a}.status{margin-top:15px;display:none;border:1px solid #314052;border-radius:12px;background:#0b1019;padding:12px 14px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.status.good{border-color:#2d6657;color:#bff9e7}.status.bad{border-color:#72424e;color:#ffc8d1}.status.warn{border-color:#67552e;color:#ffe5b0}.progress{height:5px;background:#252d3d;border-radius:99px;overflow:hidden;margin-top:10px;display:none}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--mint),var(--purple));transition:width .3s}.download{display:none;margin-top:16px;border:1px solid #356e60;background:#0d211d;border-radius:15px;padding:15px}.download strong{display:block;color:var(--mint);margin-bottom:3px}.download p{font-size:12px;color:#b7c9c4;margin:0 0 12px}.note{margin-top:17px;padding:15px 17px;border:1px solid #574d34;border-radius:14px;background:#17140f;color:#d5c9b0;font-size:12px;line-height:1.7}.note strong{color:var(--gold)}footer{margin-top:26px;color:#778198;font-size:11px}@media(max-width:720px){main{padding:18px 14px 50px}.top{margin-bottom:35px}.tag{display:none}.cols{grid-template-columns:1fr}.options{grid-template-columns:1fr}.lead{font-size:15px}.runrow .btn{width:100%}}
 </style>
 </head>
 <body>
 <main>
-<header class="top">
-  <div class="brand"><div class="logo">R</div><div>REY SLIDE AI<br><span style="color:#9aa6bb;font-size:10px;font-weight:600;letter-spacing:.18em">REFERENCE STUDIO</span></div></div>
-  <div class="tag">VISUAL-FIRST PRESENTATION</div>
-</header>
+<header class="top"><div class="brand"><div class="logo">R</div><div>REY SLIDE AI<br><span style="color:#9aa6bb;font-size:10px;font-weight:600;letter-spacing:.17em">PPTX STYLE TRANSFER</span></div></div><div class="tag">CONTENT FIRST · DESIGN MATCH</div></header>
 <section class="hero">
-  <div class="eyebrow">UPLOAD MATERI · UPLOAD CONTOH · BUAT DECK BARU</div>
-  <h1>Bukan sekadar ganti teks.<br><span>Bangun ulang presentasimu.</span></h1>
-  <p class="lead">Gunakan PPTX contoh sebagai acuan desain, lalu olah materi mentah menjadi presentasi baru dengan susunan yang masuk akal, ilustrasi yang relevan, diagram, grafik, tipografi, warna, dan komposisi visual yang konsisten.</p>
-  <div class="actions">
-    <a class="button" href="https://github.com/codespaces/new?repo=reybyoo-maker%2Fpresenton-ai-new&amp;ref=feature%2Freference-fidelity&amp;devcontainer_path=.devcontainer%2Fdevcontainer.json">BUKA FULL REFERENCE STUDIO <span aria-hidden="true">↗</span></a>
-    <div class="mini">Membuka workspace pribadi di GitHub Codespaces. Tidak perlu Terminal; proses aplikasi sudah disiapkan otomatis.</div>
-  </div>
+<div class="eyebrow">DUA PPTX MASUK · SATU PPTX BARU KELUAR</div>
+<h1>Isi tetap milikmu.<br><span>Tampilannya ikut contoh.</span></h1>
+<p class="lead">Upload PPTX materi asli dan PPTX contoh desain. Tool ini memakai slide contoh sebagai sumber visual—font, ilustrasi, layout, background, aset dan animasi bawaan contoh—lalu memindahkan teks materi secara verbatim tanpa minta AI menulis ulang isinya.</p>
 </section>
-<section class="grid" aria-label="Alur kerja">
-  <article class="card"><div class="num">01 / REFERENSI</div><h2>Analisis desain PPTX</h2><p>Template dibuat dari preview slide dan pemeriksaan font, bukan dengan menempel teks secara membabi buta.</p></article>
-  <article class="card"><div class="num">02 / MATERI</div><h2>Susun cerita baru</h2><p>Materi mentah menjadi alur slide yang relevan, memakai fakta dari dokumen yang kamu unggah.</p></article>
-  <article class="card"><div class="num">03 / VISUAL</div><h2>Ilustrasi dan grafik</h2><p>Buat visual yang sesuai isi dan arah seni referensi. Diagram dan grafik hanya memakai data sumber.</p></article>
+<div class="cols">
+<section class="panel">
+<div class="panelhead"><div class="num">01</div><div><h2>PPTX materi asli</h2><p>Isi yang wajib dipertahankan.</p></div></div>
+<label class="drop" id="sourceDrop" for="sourceInput"><span class="up">↑</span><strong>Klik atau seret PPTX materimu ke sini</strong><small>Format .pptx · teks sumber dipindahkan apa adanya.</small><input id="sourceInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"></label>
+<div class="fileinfo" id="sourceInfo"><b id="sourceName"></b><span id="sourceMeta"></span><button class="remove" id="removeSource" type="button">Hapus file</button></div>
 </section>
-<div class="note"><strong>Catatan penting:</strong> full studio membutuhkan backend yang berjalan dan provider AI yang dikonfigurasi. Setelah workspace terbuka, siapkan provider/model AI di pengaturan, lalu buka route <strong>/reference-studio</strong>. Akurasi desain, ketersediaan font, dan animasi/transisi tetap perlu diperiksa di editor dan di PowerPoint; tidak ada sistem yang bisa menjamin piksel-identik untuk semua file PPTX.</div>
-<footer>REY SLIDE AI · Personal workspace · Dibuat untuk mengolah materi berdasarkan referensi visual.</footer>
+<section class="panel">
+<div class="panelhead"><div class="num">02</div><div><h2>PPTX contoh desain</h2><p>Visual yang ingin ditiru.</p></div></div>
+<label class="drop" id="refDrop" for="refInput"><span class="up">✦</span><strong>Klik atau seret PPTX contoh ke sini</strong><small>Font, layout, ilustrasi, background, dan animasi diambil dari contoh ini.</small><input id="refInput" type="file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"></label>
+<div class="fileinfo" id="refInfo"><b id="refName"></b><span id="refMeta"></span><button class="remove" id="removeRef" type="button">Hapus file</button></div>
+</section>
+</div>
+<div class="options">
+<div class="option"><strong>Yang dipertahankan dari materi</strong>Teks dan paragraf ditransfer apa adanya, urutan slide mengikuti PPTX materi.</div>
+<div class="option"><strong>Yang diambil dari contoh</strong>Layout, font, warna, ilustrasi, gambar, background, bentuk, dan animasi slide yang sudah ada.</div>
+</div>
+<section class="work">
+<h2>03 / Buat PPTX baru</h2>
+<p>File diproses langsung di browser kamu. Tidak diunggah ke server dan tidak membutuhkan API key.</p>
+<div class="runrow"><button id="run" class="btn" type="button" disabled>✦ TERAPKAN TAMPILAN CONTOH</button><button id="clear" class="btn secondary" type="button">Reset</button></div>
+<div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+<div class="status" id="status" role="status" aria-live="polite"></div>
+<div class="download" id="download"><strong>✓ PPTX SIAP DIUNDUH</strong><p id="downloadDetails"></p><button id="downloadBtn" class="btn" type="button">UNDUH PPTX BARU ↓</button></div>
+</section>
+<div class="note"><strong>Penting soal isi:</strong> teks yang terbaca dari shape PPTX dipertahankan apa adanya. Visual slide—termasuk ilustrasi dan animasi—diambil dari PPTX contoh, jadi gambar/chart spesifik milik deck materi tidak dipindahkan sebagai objek editable. Untuk menjaga animasi contoh, hasil dibuat dari slide OOXML contoh yang asli. Setelah diunduh, buka di PowerPoint dan cek font yang tersedia serta hasil setiap slide.</div>
+<footer>REY SLIDE AI · Style transfer berjalan lokal di browser · Jangan tutup tab selama proses.</footer>
 </main>
+<script>
+(function(){
+"use strict";
+var NS={
+ p:"http://schemas.openxmlformats.org/presentationml/2006/main",
+ a:"http://schemas.openxmlformats.org/drawingml/2006/main",
+ r:"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+ rel:"http://schemas.openxmlformats.org/package/2006/relationships",
+ ct:"http://schemas.openxmlformats.org/package/2006/content-types"
+};
+var sourceFile=null,refFile=null,outputBlob=null,outputName="Rey-Slide-AI.pptx",sourceDeck=null,refDeck=null;
+function $(id){return document.getElementById(id)}
+function xml(text){var d=new DOMParser().parseFromString(text,"application/xml");if(d.getElementsByTagName("parsererror").length)throw new Error("XML PPTX tidak valid.");return d}
+function nodes(el,ns,name){return Array.prototype.slice.call(el.getElementsByTagNameNS(ns,name))}
+function direct(el,ns,name){return Array.prototype.filter.call(el.children||[],function(n){return n.namespaceURI===ns&&n.localName===name})}
+function resolveTarget(base,target){if(target.charAt(0)==="/")return target.slice(1);var parts=base.split("/");parts.pop();target.split("/").forEach(function(part){if(!part||part===".")return;if(part==="..")parts.pop();else parts.push(part)});return parts.join("/")}
+function relPart(path){var bits=path.split("/");var name=bits.pop();return bits.join("/")+"/_rels/"+name+".rels"}
+function zipText(zip,path){var file=zip.file(path);if(!file) return Promise.resolve(null);return file.async("text")}
+function parseRels(text){var d=xml(text),m={};nodes(d,NS.rel,"Relationship").forEach(function(r){m[r.getAttribute("Id")]={id:r.getAttribute("Id"),target:r.getAttribute("Target"),type:r.getAttribute("Type"),mode:r.getAttribute("TargetMode")}});return {doc:d,map:m}}
+async function readDeck(file){
+ var zip=await JSZip.loadAsync(await file.arrayBuffer());
+ var ptext=await zipText(zip,"ppt/presentation.xml"),rtext=await zipText(zip,"ppt/_rels/presentation.xml.rels");
+ if(!ptext||!rtext)throw new Error(file.name+" bukan file PPTX yang valid.");
+ var pd=xml(ptext),relations=parseRels(rtext),sldIds=nodes(pd,NS.p,"sldId"),paths=[];
+ sldIds.forEach(function(id){var rid=id.getAttributeNS(NS.r,"id"),rel=relations.map[rid];if(rel)paths.push(resolveTarget("ppt/presentation.xml",rel.target))});
+ if(!paths.length)throw new Error("Tidak ditemukan slide di "+file.name);
+ var slides=[];
+ for(var i=0;i<paths.length;i++){
+  var path=paths[i],text=await zipText(zip,path);if(!text)continue;
+  var d=xml(text),shapeList=nodes(d,NS.p,"sp").map(function(sp,index){return getShape(sp,index)}),pictures=nodes(d,NS.p,"pic").length,frames=nodes(d,NS.p,"graphicFrame").length;
+  slides.push({path:path,xml:d,xmlText:text,shapes:shapeList,images:pictures,frames:frames,index:i});
+ }
+ var max=0;Object.keys(zip.files).forEach(function(p){var m=p.match(/^ppt\/slides\/slide(\d+)\.xml$/);if(m)max=Math.max(max,Number(m[1]))});
+ return {zip:zip,slides:slides,name:file.name,maxSlide:max,presentation:pd,presText:ptext,presRels:relations.doc,presRelsMap:relations.map};
+}
+function getShape(sp,index){
+ var cnv=nodes(sp,NS.p,"cNvPr")[0],tx=nodes(sp,NS.p,"txBody")[0],name=cnv?cnv.getAttribute("name"):"Shape "+index,id=cnv?cnv.getAttribute("id"):String(index);
+ if(!tx)return {node:sp,index:index,id:id,name:name,text:"",paragraphs:[],protected:false};
+ var pars=nodes(tx,NS.a,"p"),paragraphs=pars.map(function(p){return nodes(p,NS.a,"t").map(function(t){return t.textContent}).join("")});
+ var text=paragraphs.join("\n").trim();
+ var ph=nodes(sp,NS.p,"ph")[0],phType=ph?ph.getAttribute("type"):"";
+ var off=nodes(sp,NS.a,"off")[0],y=off?Number(off.getAttribute("y"))/914400:null;
+ var protectedShape=/sldNum|dt|ftr|hdr/i.test(phType)||/logo|brand|footer|header|page.?num|slide.?num|copyright|website|watermark/i.test(name)||/https?:\/\/|www\.|©|copyright/i.test(text)||(/^\d{1,3}$/.test(text)&&text.length<4)||(y!==null&&y>6.9&&text.length<50);
+ return {node:sp,index:index,id:id,name:name,text:text,paragraphs:paragraphs,protected:protectedShape,hasField:nodes(sp,NS.a,"fld").length>0};
+}
+function extractText(slide){return slide.shapes.filter(function(s){return s.text.length>0&&!s.hasField}).map(function(s){return {name:s.name,paragraphs:s.paragraphs.slice(),text:s.paragraphs.join("\n")}})}
+function countTextShapes(slide){return slide.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}).length}
+function textFreq(deck){var freq={};deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();if(t)freq[t]=(freq[t]||0)+1})});return freq}
+function protectRepeatedTemplateText(deck){var freq=textFreq(deck),n=deck.slides.length;deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();if(t&&freq[t]>1&&t.length<130)s.protected=true})})}
+function chooseTemplateSlide(src,ref,sourceIndex,sourceCount){
+ var texts=extractText(src),expected=sourceCount<=1?0:sourceIndex*(ref.slides.length-1)/(sourceCount-1),best=0,bestScore=Infinity;
+ ref.slides.forEach(function(t,i){
+  var slots=t.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}).length;
+  var score=Math.abs(texts.length-slots)*2.4+Math.abs(src.images-t.images)*0.55+Math.abs(src.frames-t.frames)*0.4+Math.abs(i-expected)*0.22;
+  if(slots===0)score+=10000;
+  if(sourceIndex===0&&i===0)score-=1.5;
+  if(score<bestScore){bestScore=score;best=i}
+ });
+ return ref.slides[best];
+}
+function cloneWithTextStyle(targetShape,paragraphStrings){
+ var sp=targetShape.node,tx=nodes(sp,NS.p,"txBody")[0];if(!tx)return;
+ var paras=direct(tx,NS.a,"p"),base=paras[0]?paras[0].cloneNode(true):null;
+ if(!base)return;
+ var firstRun=nodes(base,NS.a,"r")[0],firstRPr=firstRun?direct(firstRun,NS.a,"rPr")[0]:null;
+ var endRPr=nodes(base,NS.a,"endParaRPr")[0],pPr=direct(base,NS.a,"pPr")[0];
+ function makeParagraph(txt){
+  var p=base.cloneNode(true);
+  nodes(p,NS.a,"r").concat(nodes(p,NS.a,"br"),nodes(p,NS.a,"fld")).forEach(function(n){if(n.parentNode===p)n.parentNode.removeChild(n)});
+  var run=tx.ownerDocument.createElementNS(NS.a,"a:r");
+  if(firstRPr)run.appendChild(firstRPr.cloneNode(true));
+  var t=tx.ownerDocument.createElementNS(NS.a,"a:t");t.textContent=txt;
+  if(/^\s|\s$/.test(txt))t.setAttributeNS("http://www.w3.org/XML/1998/namespace","xml:space","preserve");
+  run.appendChild(t);
+  if(endRPr&&endRPr.parentNode===p)p.insertBefore(run,endRPr);else p.appendChild(run);
+  return p;
+ }
+ paras.forEach(function(p){tx.removeChild(p)});
+ (paragraphStrings.length?paragraphStrings:[""]).forEach(function(txt){tx.appendChild(makeParagraph(txt))});
+ var body=direct(tx,NS.a,"bodyPr")[0];
+ if(body&&!direct(body,NS.a,"normAutofit").length&&!direct(body,NS.a,"spAutoFit").length){
+  var autofit=tx.ownerDocument.createElementNS(NS.a,"a:normAutofit");autofit.setAttribute("fontScale","85000");autofit.setAttribute("lnSpcReduction","10000");body.appendChild(autofit);
+ }
+}
+function applySourceText(templateSlide,sourceSlide){
+ var source=extractText(sourceSlide),slots=templateSlide.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField});
+ if(!source.length)return {sourceTexts:0,slots:slots.length,assigned:0};
+ if(!slots.length)return {sourceTexts:source.length,slots:0,assigned:0};
+ var groups=[],i;
+ for(i=0;i<Math.min(source.length,slots.length);i++)groups.push(source[i].paragraphs.slice());
+ if(source.length>slots.length){
+  var remainder=[];
+  for(i=slots.length-1;i<source.length;i++)source[i].paragraphs.forEach(function(p){remainder.push(p)});
+  groups[slots.length-1]=remainder;
+ }
+ for(i=0;i<slots.length;i++)cloneWithTextStyle(slots[i],groups[i]||[]);
+ return {sourceTexts:source.length,slots:slots.length,assigned:Math.min(source.length,slots.length)};
+}
+function serialize(doc){return new XMLSerializer().serializeToString(doc)}
+async function buildOutput(source,reference,onProgress){
+ var zip=reference.zip,allSourceText=0,slideSummaries=[],contentSlides=[];
+ protectRepeatedTemplateText(reference);
+ for(var i=0;i<source.slides.length;i++){
+  var src=source.slides[i],template=chooseTemplateSlide(src,reference,i,source.slides.length),cloned=template.xml.cloneNode(true);
+  var tempSlide={shapes:nodes(cloned,NS.p,"sp").map(function(sp,index){return getShape(sp,index)}),xml:cloned,images:template.images,frames:template.frames};
+  var assigned=applySourceText(tempSlide,src);allSourceText+=assigned.sourceTexts;
+  slideSummaries.push({slide:i+1,template:template.index+1,sourceText:assigned.sourceTexts,slots:assigned.slots});
+  var xmlOut=serialize(cloned);
+  if(xmlOut.indexOf("<?xml")!==0)xmlOut='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+xmlOut;
+  var slideNum=reference.maxSlide+i+1,newPath="ppt/slides/slide"+slideNum+".xml",oldRelPath=relPart(template.path),relContent=await zipText(zip,oldRelPath);
+  zip.file(newPath,xmlOut);
+  if(relContent){
+   var rd=xml(relContent);
+   nodes(rd,NS.rel,"Relationship").forEach(function(rel){if((rel.getAttribute("Type")||"").endsWith("/notesSlide"))rel.parentNode.removeChild(rel)});
+   zip.file(relPart(newPath),serialize(rd));
+  }
+  contentSlides.push({path:newPath,number:slideNum});
+  if(onProgress)onProgress(0.35+(i+1)/source.slides.length*0.4,"Menerapkan slide "+(i+1)+" dari "+source.slides.length+"…");
+ }
+ var pdoc=xml(reference.presText),rdoc=xml(reference.presRels?serialize(reference.presRels):reference.presRelsMap);
+ var root=pdoc.documentElement,oldList=nodes(pdoc,NS.p,"sldIdLst")[0];
+ var newList=pdoc.createElementNS(NS.p,"p:sldIdLst");
+ var relationshipRoot=rdoc.documentElement;
+ var relIds=nodes(rdoc,NS.rel,"Relationship").map(function(r){return r.getAttribute("Id")});
+ var relNum=relIds.reduce(function(m,id){var mt=id.match(/^rId(\d+)$/);return mt?Math.max(m,Number(mt[1])):m},0);
+ var existingSlideIds=nodes(pdoc,NS.p,"sldId").map(function(n){return Number(n.getAttribute("id"))||255});
+ var slideId=Math.max.apply(null,[255].concat(existingSlideIds))+1;
+ contentSlides.forEach(function(slide,i){
+  var rid="rId"+(++relNum),rel=rdoc.createElementNS(NS.rel,"Relationship");
+  rel.setAttribute("Id",rid);rel.setAttribute("Type","http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide");rel.setAttribute("Target","slides/slide"+slide.number+".xml");relationshipRoot.appendChild(rel);
+  var sid=pdoc.createElementNS(NS.p,"p:sldId");sid.setAttribute("id",String(slideId+i));sid.setAttributeNS(NS.r,"r:id",rid);newList.appendChild(sid);
+ });
+ if(oldList)oldList.parentNode.replaceChild(newList,oldList);else{var sldSz=nodes(pdoc,NS.p,"sldSz")[0];if(sldSz)root.insertBefore(newList,sldSz);else root.appendChild(newList)}
+ zip.file("ppt/presentation.xml",serialize(pdoc));zip.file("ppt/_rels/presentation.xml.rels",serialize(rdoc));
+ var ctText=await zipText(zip,"[Content_Types].xml");if(!ctText)throw new Error("Content types PPTX tidak ditemukan.");
+ var ctd=xml(ctText),ctroot=ctd.documentElement;
+ contentSlides.forEach(function(slide){
+  var part="/"+slide.path,exists=nodes(ctd,NS.ct,"Override").some(function(o){return o.getAttribute("PartName")===part});
+  if(!exists){var o=ctd.createElementNS(NS.ct,"Override");o.setAttribute("PartName",part);o.setAttribute("ContentType","application/vnd.openxmlformats-officedocument.presentationml.slide+xml");ctroot.appendChild(o)}
+ });
+ zip.file("[Content_Types].xml",serialize(ctd));
+ if(onProgress)onProgress(.82,"Merapikan paket PPTX…");
+ var blob=await zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.presentationml.presentation",compression:"DEFLATE"},function(meta){if(onProgress)onProgress(.82+meta.percent/100*.17,"Mengemas PPTX "+Math.round(meta.percent)+"%…")});
+ return {blob:blob,summaries:slideSummaries,allSourceText:allSourceText};
+}
+function setStatus(text,kind){var el=$("status");el.textContent=text;el.className="status "+(kind||"");el.style.display="block"}
+function setProgress(n,text){$("progress").style.display="block";$("bar").style.width=Math.max(0,Math.min(100,n*100))+"%";if(text)setStatus(text,"")}
+function fileSize(n){return n<1024*1024?Math.max(1,Math.round(n/1024))+" KB":(n/1024/1024).toFixed(1)+" MB"}
+function updateButton(){$("run").disabled=!(sourceFile&&refFile);$("download").style.display="none";outputBlob=null}
+function setPicked(kind,file){
+ if(!file)return;
+ if(!/\.pptx$/i.test(file.name)){setStatus("Pilih file .pptx, bukan PDF/PPT lama.", "bad");return}
+ if(file.size>150*1024*1024){setStatus("Ukuran file maksimal 150 MB.", "bad");return}
+ if(kind==="source"){sourceFile=file;$("sourceName").textContent=file.name;$("sourceMeta").textContent=fileSize(file.size);$("sourceInfo").style.display="block";$("sourceDrop").style.display="none"}
+ else{refFile=file;$("refName").textContent=file.name;$("refMeta").textContent=fileSize(file.size);$("refInfo").style.display="block";$("refDrop").style.display="none"}
+ $("status").style.display="none";updateButton()
+}
+function clearPicked(kind){
+ if(kind==="source"){sourceFile=null;sourceDeck=null;$("sourceInput").value="";$("sourceInfo").style.display="none";$("sourceDrop").style.display="flex"}
+ else{refFile=null;refDeck=null;$("refInput").value="";$("refInfo").style.display="none";$("refDrop").style.display="flex"}
+ updateButton()
+}
+$("sourceInput").addEventListener("change",function(){setPicked("source",this.files[0]);this.value=""});
+$("refInput").addEventListener("change",function(){setPicked("ref",this.files[0]);this.value=""});
+$("removeSource").onclick=function(){clearPicked("source")};$("removeRef").onclick=function(){clearPicked("ref")};
+function setupDrop(id,kind){var el=$(id);["dragenter","dragover"].forEach(function(ev){el.addEventListener(ev,function(e){e.preventDefault();el.classList.add("drag")})});["dragleave","drop"].forEach(function(ev){el.addEventListener(ev,function(e){e.preventDefault();el.classList.remove("drag")})});el.addEventListener("drop",function(e){var file=e.dataTransfer&&e.dataTransfer.files[0];if(file)setPicked(kind,file)})}
+setupDrop("sourceDrop","source");setupDrop("refDrop","ref");
+$("clear").onclick=function(){clearPicked("source");clearPicked("ref");$("status").style.display="none";$("progress").style.display="none";$("download").style.display="none";$("bar").style.width="0";};
+$("run").onclick=async function(){
+ if(!sourceFile||!refFile)return;
+ $("run").disabled=true;$("download").style.display="none";outputBlob=null;sourceDeck=null;refDeck=null;
+ try{
+  setProgress(.02,"Membaca PPTX materi asli…");sourceDeck=await readDeck(sourceFile);
+  setProgress(.13,"Membaca PPTX contoh dan animasi…");refDeck=await readDeck(refFile);
+  if(!sourceDeck.slides.length||!refDeck.slides.length)throw new Error("PPTX harus berisi setidaknya satu slide.");
+  setProgress(.22,"Mencocokkan layout berdasar struktur slide…");
+  var built=await buildOutput(sourceDeck,refDeck,setProgress);
+  outputBlob=built.blob;outputName=(sourceFile.name.replace(/\.pptx$/i,"").replace(/[\\/:*?"<>|]/g,"").trim()||"Presentation")+"-ikut-contoh.pptx";
+  $("downloadDetails").textContent="Jumlah slide: "+built.summaries.length+". Total kotak teks sumber yang dibaca: "+built.allSourceText+". Teks dipindahkan tanpa parafrasa. Cek slide yang padat setelah membuka file.";
+  $("download").style.display="block";$("progress").style.display="none";setStatus("Selesai. File PPTX baru sudah siap. Layout/visual/animasi berasal dari contoh; isi teks sumber dipindahkan apa adanya.","good");
+ }catch(e){$("progress").style.display="none";setStatus("Gagal memproses PPTX: "+(e&&e.message?e.message:String(e)),"bad")}
+ finally{$("run").disabled=!(sourceFile&&refFile)}
+};
+$("downloadBtn").onclick=function(){
+ if(!outputBlob)return;
+ var url=URL.createObjectURL(outputBlob),a=document.createElement("a");a.href=url;a.download=outputName;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},60000)
+};
+})();
+</script>
 </body>
 </html>
