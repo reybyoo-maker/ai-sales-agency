@@ -90,9 +90,11 @@ async function extractChartData(zip,slidePath,slideNo){
   var d=xml(raw),vals=nodes(d,NS.c,"v").map(function(n){return n.textContent.trim()}).filter(Boolean);
   var title=nodes(d,NS.c,"title").map(function(t){return nodes(t,NS.a,"t").map(function(n){return n.textContent}).join("")}).join(" ").trim();
   var series=nodes(d,NS.c,"ser").map(function(ser,si){
-   var vals=nodes(ser,NS.c,"v").map(function(n){return n.textContent.trim()}).filter(Boolean);
+   var categories=nodes(ser,NS.c,"cat").map(function(n){return nodes(n,NS.c,"v").map(function(v){return v.textContent.trim()}).filter(Boolean)})[0]||[];
+   var vals=nodes(ser,NS.c,"val").map(function(n){return nodes(n,NS.c,"v").map(function(v){return v.textContent.trim()}).filter(Boolean)})[0]||[];
    var sname=nodes(ser,NS.c,"tx").map(function(n){return nodes(n,NS.c,"v").map(function(v){return v.textContent}).join("")}).join(" ").trim();
-   return (sname||("Seri "+(si+1)))+": "+vals.join(", ");
+   var detail=categories.length?categories.map(function(label,index){return label+" = "+(vals[index]===undefined?"":vals[index])}).join(", "):vals.join(", ");
+   return (sname||("Seri "+(si+1)))+": "+detail;
   }).filter(Boolean);
   var summary=[title?"Judul grafik: "+title:"",series.length?series.join(" ; "):"Nilai grafik: "+vals.join(", ")].filter(Boolean).join("\n");
   if(summary.trim())out.push({name:"Grafik slide "+slideNo+" nomor "+(i+1),paragraphs:summary.split("\n"),text:summary});
