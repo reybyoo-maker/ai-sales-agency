@@ -131,7 +131,8 @@ async function extractChartData(zip,slidePath,slideNo){
    return (sname||("Seri "+(si+1)))+": "+detail;
   }).filter(Boolean);
   var summary=[title?"Judul grafik: "+title:"",series.length?series.join(" ; "):"Nilai grafik: "+vals.join(", ")].filter(Boolean).join("\n");
-  if(summary.trim())out.push({name:"Grafik slide "+slideNo+" nomor "+(i+1),paragraphs:summary.split("\n"),text:summary});
+  var hasPlotValues=nodes(d,NS.c,"ser").some(function(ser){return nodes(ser,NS.c,"val").some(function(val){return nodes(val,NS.c,"v").length>0})});
+  if(summary.trim()&&hasPlotValues)out.push({name:"Grafik slide "+slideNo+" nomor "+(i+1),paragraphs:summary.split("\n"),text:summary});
  }
  return out;
 }
@@ -239,7 +240,9 @@ async function buildOutput(source,reference,onProgress){
  var zip=reference.zip,allSourceText=0,slideSummaries=[],contentSlides=[];
  protectRepeatedTemplateText(reference);
  for(var i=0;i<source.slides.length;i++){
-  var src=source.slides[i],template=chooseTemplateSlide(src,reference,i,source.slides.length),cloned=template.xml.cloneNode(true);
+  var src=source.slides[i];
+  if(src.hasCharts&&!(src.supplemental||[]).some(function(item){return /^Grafik slide/.test(item.name||"")}))throw new Error("Slide materi "+(i+1)+" berisi grafik tetapi nilai grafik tidak dapat dibaca dari cache PPTX. Agar tidak kehilangan isi, ekspor dihentikan. Simpan/ekspor grafik dari PowerPoint dengan data tersemat lalu coba lagi.");
+  var template=chooseTemplateSlide(src,reference,i,source.slides.length),cloned=template.xml.cloneNode(true);
   var clonedShapes=nodes(cloned,NS.p,"sp").map(function(sp,index){return getShape(sp,index)});
   template.shapes.forEach(function(original,index){if(original.protected&&clonedShapes[index])clonedShapes[index].protected=true});
   var tempSlide={shapes:clonedShapes,xml:cloned,images:template.images,frames:template.frames};
