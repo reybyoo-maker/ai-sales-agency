@@ -93,12 +93,12 @@ function getShape(sp,index){
  var ph=nodes(sp,NS.p,"ph")[0],phType=ph?ph.getAttribute("type"):"";
  var off=nodes(sp,NS.a,"off")[0],y=off?Number(off.getAttribute("y"))/914400:null;
  var protectedShape=/sldNum|dt|ftr|hdr/i.test(phType)||/logo|brand|footer|header|page.?num|slide.?num|copyright|website|watermark/i.test(name)||/https?:\/\/|www\.|©|copyright/i.test(text)||(/^\d{1,3}$/.test(text)&&text.length<4)||(y!==null&&y>6.9&&text.length<50);
- return {node:sp,index:index,id:id,name:name,text:text,paragraphs:paragraphs,protected:protectedShape,hasField:nodes(sp,NS.a,"fld").length>0};
+ return {node:sp,index:index,id:id,name:name,text:text,paragraphs:paragraphs,protected:protectedShape,hasField:nodes(sp,NS.a,"fld").length>0,y:y};
 }
 function extractText(slide){return slide.shapes.filter(function(s){return s.text.length>0&&!s.hasField}).map(function(s){return {name:s.name,paragraphs:s.paragraphs.slice(),text:s.paragraphs.join("\n")}})}
 function countTextShapes(slide){return slide.shapes.filter(function(s){return s.text.length>0&&!s.protected&&!s.hasField}).length}
 function textFreq(deck){var freq={};deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();if(t)freq[t]=(freq[t]||0)+1})});return freq}
-function protectRepeatedTemplateText(deck){var freq=textFreq(deck),n=deck.slides.length;deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();if(t&&freq[t]>1&&t.length<130)s.protected=true})})}
+function protectRepeatedTemplateText(deck){var freq=textFreq(deck);deck.slides.forEach(function(sl){sl.shapes.forEach(function(s){var t=(s.text||"").replace(/\s+/g," ").trim();var edge=s.y!==null&&(s.y<0.55||s.y>6.45);if(t&&freq[t]>1&&t.length<55&&edge)s.protected=true})})}
 function chooseTemplateSlide(src,ref,sourceIndex,sourceCount){
  var texts=extractText(src),expected=sourceCount<=1?0:sourceIndex*(ref.slides.length-1)/(sourceCount-1),best=0,bestScore=Infinity;
  ref.slides.forEach(function(t,i){
@@ -154,8 +154,11 @@ async function buildOutput(source,reference,onProgress){
  protectRepeatedTemplateText(reference);
  for(var i=0;i<source.slides.length;i++){
   var src=source.slides[i],template=chooseTemplateSlide(src,reference,i,source.slides.length),cloned=template.xml.cloneNode(true);
-  var tempSlide={shapes:nodes(cloned,NS.p,"sp").map(function(sp,index){return getShape(sp,index)}),xml:cloned,images:template.images,frames:template.frames};
-  var assigned=applySourceText(tempSlide,src);allSourceText+=assigned.sourceTexts;
+  var clonedShapes=nodes(cloned,NS.p,"sp").map(function(sp,index){return getShape(sp,index)});
+  template.shapes.forEach(function(original,index){if(original.protected&&clonedShapes[index])clonedShapes[index].protected=true});
+  var tempSlide={shapes:clonedShapes,xml:cloned,images:template.images,frames:template.frames};
+  var assigned=applySourceText(tempSlide,src);
+  if(assigned.sourceTexts>0&&assigned.slots===0)throw new Error("Slide contoh "+(template.index+1)+" tidak mempunyai kotak teks yang bisa dipakai untuk slide materi "+(i+1)+". Pilih PPTX contoh yang memiliki teks editable.");allSourceText+=assigned.sourceTexts;
   slideSummaries.push({slide:i+1,template:template.index+1,sourceText:assigned.sourceTexts,slots:assigned.slots});
   var xmlOut=serialize(cloned);
   if(xmlOut.indexOf("<?xml")!==0)xmlOut='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+xmlOut;
