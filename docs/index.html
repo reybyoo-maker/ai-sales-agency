@@ -192,8 +192,8 @@ async function buildOutput(source,reference,onProgress){
   var sourceContent=extractText(src);
   var assigned=applySourceText(tempSlide,src);
   if(assigned.sourceTexts>0&&assigned.slots===0)throw new Error("Slide contoh "+(template.index+1)+" tidak mempunyai kotak teks yang bisa dipakai untuk slide materi "+(i+1)+". Pilih PPTX contoh yang memiliki teks editable.");
-  var renderedText=nodes(cloned,NS.a,"t").map(function(n){return n.textContent}).join("\n").replace(/\\s+/g," ").trim();
-  var missing=sourceContent.filter(function(item){var t=(item.text||"").replace(/\\s+/g," ").trim();return t.length>2&&renderedText.indexOf(t)<0});
+  var renderedText=nodes(cloned,NS.a,"t").map(function(n){return n.textContent}).join("\n").replace(/\s+/g," ").trim();
+  var missing=sourceContent.filter(function(item){var t=(item.text||"").replace(/\s+/g," ").trim();return t.length>2&&renderedText.indexOf(t)<0});
   if(missing.length)throw new Error("Pemeriksaan isi gagal di slide materi "+(i+1)+". Untuk menghindari isi yang hilang, ekspor dihentikan. Bagian yang belum tertampung: "+missing.slice(0,4).map(function(x){return x.name+": "+x.text.slice(0,110)}).join(" | "));
   allSourceText+=assigned.sourceTexts;
   slideSummaries.push({slide:i+1,template:template.index+1,sourceText:assigned.sourceTexts,slots:assigned.slots});
